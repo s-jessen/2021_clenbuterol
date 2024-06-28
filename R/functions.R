@@ -1,4 +1,4 @@
-barplot <- function(df, variable, ylab, ylim = NULL) {
+barplot <- function(df, variable, ylab) {
 
 
     #Calculate visually pleasing y-axis limits w. padding for p-values
