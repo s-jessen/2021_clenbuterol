@@ -10,6 +10,7 @@ Load libraries
 knitr::opts_chunk$set(message = FALSE, warning = FALSE, error=FALSE)
 source(here::here("R/libraries.R"))
 source(here::here("R/colors.R"))
+source(here::here("R/functions.R"))
 ```
 
 Load data
@@ -28,7 +29,9 @@ df <- readxl::read_excel(here::here('data-raw/clen_data.xlsx')) %>%
     dplyr::mutate(delta_appo = appo - appo[time == "pre"]) %>% 
     dplyr::mutate(delta_ppo = ppo - ppo[time == "pre"]) %>%
     dplyr::mutate(delta_mpo = mpo - mpo[time == "pre"]) %>% 
-    dplyr::mutate(delta_mvc = mvc - mvc[time == "pre"])
+    dplyr::mutate(delta_mvc = mvc - mvc[time == "pre"]) %>% 
+    dplyr::mutate(delta_lv_mass = lv_mass - lv_mass[time == "pre"]) %>% 
+    dplyr::mutate(delta_lv_sv = lv_sv - lv_sv[time == "pre"])
     
 ```
 
@@ -311,7 +314,69 @@ summary(contrast_results, infer = TRUE)
 
 ```
 
+# LV mass
+```{r}
+lv_mass <- barplot(df, variable = "delta_lv_mass", ylab = "Change in LV mass (g)")
 
+ggsave(here::here('data/figures/lv_mass.svg'), width = 60, height = 50, units = "mm", dpi = 600)
+
+```
+
+LV mass stats
+```{r}
+#Fit model
+lm <- lmer(lv_mass ~ treatment * time + (1|id), data = df, REML=FALSE)
+
+#Show overall ANOVA output
+anova(lm)
+
+#Show estimated marginal means
+emm <- emmeans(lm, specs = ~ time * treatment, pbkrtest.limit = 5000, lmerTest.limit = 5000)
+
+# Define specific contrasts for post-pre comparisons for PLA and CLEN
+contrasts <- list(
+    "post - pre for PLA" = c(-1, 1, 0, 0),  # Compare post to pre for PLA
+    "post - pre for CLEN" = c(0, 0, -1, 1)  # Compare post to pre for CLEN
+)
+
+contrast_results <- contrast(emm, contrasts)
+
+summary(contrast_results, infer = TRUE)
+
+```
+
+# LV SV
+```{r}
+lv_sv <- barplot(df, variable = "delta_lv_sv", ylab = "Change in SV (mL)")
+
+ggsave(here::here('data/figures/lv_sv.svg'), width = 60, height = 50, units = "mm", dpi = 600)
+
+```
+
+LV SV stats
+```{r}
+#Fit model
+lm <- lmer(lv_sv ~ treatment * time + (1|id), data = df, REML=FALSE)
+
+#Show overall ANOVA output
+anova(lm)
+
+#Show estimated marginal means
+emm <- emmeans(lm, specs = ~ time * treatment, pbkrtest.limit = 5000, lmerTest.limit = 5000)
+
+# Define specific contrasts for post-pre comparisons for PLA and CLEN
+contrasts <- list(
+    "post - pre for PLA" = c(-1, 1, 0, 0),  # Compare post to pre for PLA
+    "post - pre for CLEN" = c(0, 0, -1, 1)  # Compare post to pre for CLEN
+)
+
+contrast_results <- contrast(emm, contrasts)
+
+summary(contrast_results, infer = TRUE)
+
+```
+
+# Export layout
 ```{r}
 #Export layout
 plots <- list(lean, fat, fat_p, vo2max, ippo, appo, mvc, ppo, mpo)
@@ -320,7 +385,6 @@ combined_plots <- patchwork::wrap_plots(plots, ncol = 3, nrow = 3)
 
 ggsave(plot = combined_plots, here::here('data/figures/combined_plots.svg'), width = 150, height = 150, units = "mm")
 ```
-
 
 # Correlations
 ```{r}
@@ -356,3 +420,4 @@ df %>%
 
 ```
 No apparent effect of relative dose.
+
