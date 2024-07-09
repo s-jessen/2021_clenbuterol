@@ -6,7 +6,7 @@ self-contained: true
 ---
 
 Load libraries
-```{r, message = FALSE, warning = FALSE, echo = F, error=FALSE}
+```{r, include = FALSE}
 knitr::opts_chunk$set(message = FALSE, warning = FALSE, error=FALSE)
 source(here::here("R/libraries.R"))
 source(here::here("R/colors.R"))
@@ -31,7 +31,10 @@ df <- readxl::read_excel(here::here('data-raw/clen_data.xlsx')) %>%
     dplyr::mutate(delta_mpo = mpo - mpo[time == "pre"]) %>% 
     dplyr::mutate(delta_mvc = mvc - mvc[time == "pre"]) %>% 
     dplyr::mutate(delta_lv_mass = lv_mass - lv_mass[time == "pre"]) %>% 
-    dplyr::mutate(delta_lv_sv = lv_sv - lv_sv[time == "pre"])
+    dplyr::mutate(delta_lv_sv = lv_sv - lv_sv[time == "pre"]) %>% 
+    dplyr::mutate(delta_hr = hr - hr[time == "pre"]) %>% 
+    dplyr::mutate(delta_co = co - co[time == "pre"]) %>% 
+    dplyr::mutate(delta_ef = ef - ef[time == "pre"])
     
 ```
 
@@ -63,8 +66,6 @@ contrast_results <- contrast(emm, contrasts)
 
 summary(contrast_results, infer = TRUE)
 
-#Test normal distribution
-qqmath(lm)
 
 ```
 
@@ -376,7 +377,100 @@ summary(contrast_results, infer = TRUE)
 
 ```
 
-# Export layout
+# HR
+```{r}
+hr <- barplot(df, variable = "delta_hr", ylab = "Change in heart rate (bpm)")
+
+ggsave(here::here('data/figures/hr.svg'), width = 60, height = 50, units = "mm", dpi = 600)
+
+```
+
+HR mass stats
+```{r}
+#Fit model
+lm <- lmer(hr ~ treatment * time + (1|id), data = df, REML=FALSE)
+
+#Show overall ANOVA output
+anova(lm)
+
+#Show estimated marginal means
+emm <- emmeans(lm, specs = ~ time * treatment, pbkrtest.limit = 5000, lmerTest.limit = 5000)
+
+# Define specific contrasts for post-pre comparisons for PLA and CLEN
+contrasts <- list(
+    "post - pre for PLA" = c(-1, 1, 0, 0),  # Compare post to pre for PLA
+    "post - pre for CLEN" = c(0, 0, -1, 1)  # Compare post to pre for CLEN
+)
+
+contrast_results <- contrast(emm, contrasts)
+
+summary(contrast_results, infer = TRUE)
+
+```
+
+# CO
+```{r}
+co <- barplot(df, variable = "delta_co", ylab = "Change in cardiac output (L/min)")
+
+ggsave(here::here('data/figures/co.svg'), width = 60, height = 50, units = "mm", dpi = 600)
+
+```
+
+CO stats
+```{r}
+#Fit model
+lm <- lmer(co ~ treatment * time + (1|id), data = df, REML=FALSE)
+
+#Show overall ANOVA output
+anova(lm)
+
+#Show estimated marginal means
+emm <- emmeans(lm, specs = ~ time * treatment, pbkrtest.limit = 5000, lmerTest.limit = 5000)
+
+# Define specific contrasts for post-pre comparisons for PLA and CLEN
+contrasts <- list(
+    "post - pre for PLA" = c(-1, 1, 0, 0),  # Compare post to pre for PLA
+    "post - pre for CLEN" = c(0, 0, -1, 1)  # Compare post to pre for CLEN
+)
+
+contrast_results <- contrast(emm, contrasts)
+
+summary(contrast_results, infer = TRUE)
+
+```
+
+# EF
+```{r}
+ef <- barplot(df, variable = "delta_ef", ylab = "Change in ejection fraction (%)")
+
+ggsave(here::here('data/figures/ef.svg'), width = 60, height = 50, units = "mm", dpi = 600)
+
+```
+
+EF stats
+```{r}
+#Fit model
+lm <- lmer(ef ~ treatment * time + (1|id), data = df, REML=FALSE)
+
+#Show overall ANOVA output
+anova(lm)
+
+#Show estimated marginal means
+emm <- emmeans(lm, specs = ~ time * treatment, pbkrtest.limit = 5000, lmerTest.limit = 5000)
+
+# Define specific contrasts for post-pre comparisons for PLA and CLEN
+contrasts <- list(
+    "post - pre for PLA" = c(-1, 1, 0, 0),  # Compare post to pre for PLA
+    "post - pre for CLEN" = c(0, 0, -1, 1)  # Compare post to pre for CLEN
+)
+
+contrast_results <- contrast(emm, contrasts)
+
+summary(contrast_results, infer = TRUE)
+
+```
+
+# Export layout (performance)
 ```{r}
 #Export layout
 plots <- list(lean, fat, fat_p, vo2max, ippo, appo, mvc, ppo, mpo)
@@ -384,6 +478,24 @@ plots <- list(lean, fat, fat_p, vo2max, ippo, appo, mvc, ppo, mpo)
 combined_plots <- patchwork::wrap_plots(plots, ncol = 3, nrow = 3)
 
 ggsave(plot = combined_plots, here::here('data/figures/combined_plots.svg'), width = 150, height = 150, units = "mm")
+```
+
+# Export layout (heart)
+```{r}
+#Export layout
+plots <- list(lv_mass, lv_sv, hr, co, ef)
+
+layout <- c(
+  patchwork::area(t = 1, l = 1, b = 1, r = 1), # First plot
+  patchwork::area(t = 1, l = 2, b = 1, r = 2), # Second plot
+  patchwork::area(t = 2, l = 1, b = 2, r = 1), # Third plot
+  patchwork::area(t = 2, l = 2, b = 2, r = 2), # Fourth plot
+  patchwork::area(t = 2, l = 3, b = 2, r = 3)  # Fifth plot
+)
+
+combined_plots <- wrap_plots(plots) + plot_layout(design = layout)
+
+ggsave(plot = combined_plots, here::here('data/figures/combined_plots_heart.png'), width = 150, height = 150, units = "mm")
 ```
 
 # Correlations
