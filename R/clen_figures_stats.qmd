@@ -17,7 +17,7 @@ Load data
 ```{r}
 df <- readxl::read_excel(here::here('data-raw/clen_data.xlsx')) %>% 
     dplyr::mutate(id = as.factor(id)) %>% 
-    dplyr::mutate(trial = as.factor(trial)) %>%
+    dplyr::mutate(trial = as.numeric(trial)) %>%
     dplyr::mutate(time = factor(time, levels = c("pre", "post"))) %>%
     dplyr::mutate(treatment = factor(treatment, levels = c("PLA", "CLEN"))) %>%
     dplyr::group_by(id, treatment) %>% 
@@ -532,4 +532,40 @@ df %>%
 
 ```
 No apparent effect of relative dose.
+
+# Alternative statistics
+```{r}
+# Creating the linear mixed model
+model <- nlme::lme(
+  fixed = lean ~ time * treatment,
+  random = ~ 1 | id,
+  correlation = nlme::corAR1(form = ~ trial | id),
+  data = df,
+  method = "ML",
+  control = nlme::lmeControl(
+    opt = "optim",
+    maxIter = 100,
+    msMaxIter = 100,
+    msVerbose = TRUE,
+    tolerance = 1e-10
+  )
+)
+
+# Summary of the model
+anova(model)
+
+# Show estimated marginal means
+emm <- emmeans(model, specs = ~ time * treatment, pbkrtest.limit = 5000, lmerTest.limit = 5000)
+
+# Define specific contrasts for post-pre comparisons for PLA and CLEN
+contrasts <- list(
+    "post - pre for PLA" = c(-1, 1, 0, 0),  # Compare post to pre for PLA
+    "post - pre for CLEN" = c(0, 0, -1, 1)  # Compare post to pre for CLEN
+)
+
+# Contrasts
+contrast_results <- contrast(emm, contrasts)
+
+summary(contrast_results, infer = TRUE)
+```
 
