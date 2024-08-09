@@ -21,23 +21,48 @@ df <- readxl::read_excel(here::here('data-raw/clen_data.xlsx')) %>%
     dplyr::mutate(time = factor(time, levels = c("pre", "post"))) %>%
     dplyr::mutate(treatment = factor(treatment, levels = c("PLA", "CLEN"))) %>%
     dplyr::group_by(id) %>% 
+    #Delta compared to first trial
     dplyr::mutate(delta_lean_carry_over = lean - lean[trial == "1"]) %>%
     dplyr::ungroup() %>% 
     dplyr::group_by(id, treatment) %>% 
+    #Whole body
     dplyr::mutate(delta_lean = lean - lean[time == "pre"]) %>%
     dplyr::mutate(delta_fat = fat - fat[time == "pre"]) %>% 
     dplyr::mutate(delta_fat_p = fat_p - fat_p[time == "pre"]) %>% 
+    #Leg
+    dplyr::mutate(delta_leg_lean = leg_lean - leg_lean[time == "pre"]) %>%
+    dplyr::mutate(delta_leg_fat = leg_fat - leg_fat[time == "pre"]) %>% 
+    dplyr::mutate(delta_leg_fat_p = leg_fat_p - leg_fat_p[time == "pre"]) %>% 
+    #Arm
+    dplyr::mutate(delta_arm_lean = arm_lean - arm_lean[time == "pre"]) %>%
+    dplyr::mutate(delta_arm_fat = arm_fat - arm_fat[time == "pre"]) %>% 
+    dplyr::mutate(delta_arm_fat_p = arm_fat_p - arm_fat_p[time == "pre"]) %>% 
+    #Torso
+    dplyr::mutate(delta_torso_lean = torso_lean - torso_lean[time == "pre"]) %>%
+    dplyr::mutate(delta_torso_fat = torso_fat - torso_fat[time == "pre"]) %>% 
+    dplyr::mutate(delta_torso_fat_p = torso_fat_p - torso_fat_p[time == "pre"]) %>%
+    #Aerobic
     dplyr::mutate(delta_vo2max = vo2max - vo2max[time == "pre"]) %>% 
+    dplyr::mutate(delta_kondital = kondital - kondital[time == "pre"]) %>% 
     dplyr::mutate(delta_ippo = ippo - ippo[time == "pre"]) %>% 
-    dplyr::mutate(delta_appo = appo - appo[time == "pre"]) %>% 
+    dplyr::mutate(delta_appo = appo - appo[time == "pre"]) %>%
+    #Anaerobic
     dplyr::mutate(delta_ppo = ppo - ppo[time == "pre"]) %>%
-    dplyr::mutate(delta_mpo = mpo - mpo[time == "pre"]) %>% 
-    dplyr::mutate(delta_mvc = mvc - mvc[time == "pre"]) %>% 
+    dplyr::mutate(delta_mpo = mpo - mpo[time == "pre"]) %>%
+    #Cardiac
     dplyr::mutate(delta_lv_mass = lv_mass - lv_mass[time == "pre"]) %>% 
     dplyr::mutate(delta_lv_sv = lv_sv - lv_sv[time == "pre"]) %>% 
     dplyr::mutate(delta_hr = hr - hr[time == "pre"]) %>% 
     dplyr::mutate(delta_co = co - co[time == "pre"]) %>% 
-    dplyr::mutate(delta_ef = ef - ef[time == "pre"]) 
+    dplyr::mutate(delta_ef = ef - ef[time == "pre"]) %>% 
+    #MVC
+    dplyr::mutate(delta_mvc = mvc - mvc[time == "pre"]) %>% 
+    dplyr::mutate(delta_tpot = tpot - tpot[time == "pre"]) %>% 
+    dplyr::mutate(delta_tpt = tpt - tpt[time == "pre"]) %>% 
+    dplyr::mutate(delta_hrt = hrt - hrt[time == "pre"]) %>% 
+    dplyr::mutate(delta_va = va - va[time == "pre"]) %>%
+    #Ungroup
+    dplyr::ungroup()
     
 ```
 
@@ -75,74 +100,457 @@ df %>%
 ggsave(here::here('data/figures/carry_over.svg'), height = 100, width = 200, units = "mm")
 ```
 
-
-# Lean
+Body comp
 ```{r}
-lean <- barplot(df, variable = "delta_lean", ylab = "Change in lean mass (kg)")
+#Prepare data
+body_comp <- df %>% 
+    dplyr::filter(time == "post") %>% 
+    dplyr::select(c(
+        "id",
+        "treatment",
+        "delta_leg_lean",
+        "delta_leg_fat",
+        "delta_leg_fat_p",
+        "delta_arm_lean",
+        "delta_arm_fat",
+        "delta_arm_fat_p",
+        "delta_torso_lean",
+        "delta_torso_fat",
+        "delta_torso_fat_p")) %>% 
+    tidyr::pivot_longer(
+        cols = -c(id, treatment),
+        names_to = "variable",
+        values_to = "change"
+    ) %>% 
+    dplyr::mutate(
+        body_part = case_when(
+            stringr::str_detect(variable, "^delta_arm") ~ "arm",
+            stringr::str_detect(variable, "^delta_leg") ~ "leg",
+            stringr::str_detect(variable, "^delta_torso") ~ "torso"),
+        tissue = case_when(
+            stringr::str_detect(variable, "lean$") ~ "lean",
+            stringr::str_detect(variable, "fat$") ~ "fat",
+            stringr::str_detect(variable, "fat_p$") ~ "fat_p")
+        ) %>% 
+    dplyr::mutate(body_part = factor(body_part,
+                                     levels = c("torso",
+                                                "arm",
+                                                "leg"))) %>% 
+    dplyr::mutate(tissue = factor(tissue,
+                                     levels = c("lean",
+                                                "fat",
+                                                "fat_p")))
 
-ggsave(here::here('data/figures/lean.svg'), width = 60, height = 50, units = "mm")
+#Plot
+body_comp %>%
+    ggplot2::ggplot(aes(x = treatment, y = change, fill = treatment))+
+    geom_bar(
+        stat = "summary",
+        fun = "mean",
+        color = NA,
+        width = 0.6)+
+    geom_point(size = 1.5,
+               shape = 16,
+               position = position_jitter(width = 0.05),
+               color = "black",
+               alpha = 0.25)+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_text(color = "black", size = 10),
+        text = element_text(size = 10, family="Source Sans Pro", color = "black"),
+        axis.title = element_text(size = 10, family="Source Sans Pro"),
+        axis.text.x = element_text(size = 10),
+        legend.position = "none",
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = (unit(3, "mm")),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        title = element_text(size = 6),
+        strip.background = element_blank(),
+        strip.placement = "outside",  # Move strip labels outside plotting area
+        strip.text = element_text(size = 10)
+    )+
+    scale_fill_manual(
+        values = c("PLA" = pla_color, "CLEN" = clen_color)
+    )+
+    labs(x = NULL,
+         y = "Change (post - pre)\n")+
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.25))) +
+    facet_grid(tissue ~ body_part,
+               switch = "y",
+               scales = "free_y",
+               labeller = as_labeller(c(
+                   lean = "Lean (kg)",
+                   fat = "Fat (kg)",
+                   fat_p = "Fat (%.)",
+                   arm = "Arms",
+                   torso = "Torso",
+                   leg = "Leg")))
+
+ggsave(here::here('data/figures/layouts/body_comp_layout.svg'), width = 150, height = 100, units = "mm")
+
 ```
 
-# Fat
+Aerobic
 ```{r}
-fat <- barplot(df, variable = "delta_fat", ylab = "Change in fat mass (kg)")
+#Prepare data
+aerobic <- df %>% 
+    dplyr::filter(time == "post") %>% 
+    dplyr::select(c(
+        "id",
+        "treatment",
+        "delta_vo2max",
+        "delta_appo",
+        "delta_ippo",
+        "delta_kondital")) %>% 
+    tidyr::pivot_longer(
+        cols = -c(id, treatment),
+        names_to = "variable",
+        values_to = "change"
+    ) %>% 
+    dplyr::mutate(variable = factor(variable, 
+                                    levels = c("delta_vo2max",
+                                               "delta_kondital",
+                                               "delta_appo",
+                                               "delta_ippo")))
 
-ggsave(here::here('data/figures/fat.svg'), width = 60, height = 50, units = "mm")
+#Plot
+aerobic %>%
+    ggplot2::ggplot(aes(x = treatment, y = change, fill = treatment))+
+    geom_bar(
+        stat = "summary",
+        fun = "mean",
+        color = NA,
+        width = 0.6)+
+    geom_point(size = 1.5,
+               shape = 16,
+               position = position_jitter(width = 0.05),
+               color = "black",
+               alpha = 0.25)+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_text(color = "black", size = 10),
+        text = element_text(size = 10, family="Source Sans Pro", color = "black"),
+        axis.title = element_text(size = 10, family="Source Sans Pro"),
+        axis.text.x = element_text(size = 10),
+        legend.position = "none",
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = (unit(3, "mm")),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        title = element_text(size = 6),
+        strip.background = element_blank(),
+        strip.placement = "outside",  # Move strip labels outside plotting area
+        strip.text = element_text(size = 10)
+    )+
+    scale_fill_manual(
+        values = c("PLA" = pla_color, "CLEN" = clen_color)
+    )+
+    labs(x = NULL,
+         y = "Change (post - pre)")+
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.25))) +
+    facet_wrap(~ variable,
+               scales = "free_y",
+               ncol = 4,
+               labeller = as_labeller(c(
+                   delta_vo2max = "VO2max (mL/min)",
+                   delta_kondital = "VO2max (mL/min/kg)",
+                   delta_appo = "Aerobic Wmax (W)",  
+                   delta_ippo = "Wmax (W)")))
+
+ggsave(here::here('data/figures/layouts/aerobic_layout.svg'), width = 200, height = 50, units = "mm")
 ```
 
-# Fat percent
+MVC
 ```{r}
-fat_p <- barplot(df, variable = "delta_fat_p", ylab = "Change in fat percent (%.)")
+#Prepare data
+mvc <- df %>% 
+    dplyr::filter(time == "post") %>% 
+    dplyr::select(c(
+        "id",
+        "treatment",
+        "delta_mvc",
+        "delta_tpot",
+        "delta_tpt",
+        "delta_hrt",
+        "delta_va")) %>% 
+    tidyr::pivot_longer(
+        cols = -c(id, treatment),
+        names_to = "variable",
+        values_to = "change"
+    ) %>% 
+    dplyr::mutate(variable = factor(variable, 
+                                    levels = c("delta_mvc",
+                                               "delta_tpot",
+                                               "delta_tpt",
+                                               "delta_hrt",
+                                               "delta_va")))
 
-ggsave(here::here('data/figures/fat_p.svg'), width = 60, height = 50, units = "mm")
+#Plot
+mvc %>%
+    ggplot2::ggplot(aes(x = treatment, y = change, fill = treatment))+
+    geom_bar(
+        stat = "summary",
+        fun = "mean",
+        color = NA,
+        width = 0.6)+
+    geom_point(size = 1.5,
+               shape = 16,
+               position = position_jitter(width = 0.05),
+               color = "black",
+               alpha = 0.25)+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_text(color = "black", size = 10),
+        text = element_text(size = 10, family="Source Sans Pro", color = "black"),
+        axis.title = element_text(size = 10, family="Source Sans Pro"),
+        axis.text.x = element_text(size = 10),
+        legend.position = "none",
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = (unit(3, "mm")),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        title = element_text(size = 6),
+        strip.background = element_blank(),
+        strip.placement = "outside",  # Move strip labels outside plotting area
+        strip.text = element_text(size = 10)
+    )+
+    scale_fill_manual(
+        values = c("PLA" = pla_color, "CLEN" = clen_color)
+    )+
+    labs(x = NULL,
+         y = "Change (post - pre)")+
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.25))) +
+    facet_wrap(~ variable,
+               scales = "free_y",
+               ncol = 5,
+               labeller = as_labeller(c(
+                   "delta_mvc" = "MVC (Nm)",
+                   "delta_tpot" = "Potentiated\ntwitch (Nm)",
+                   "delta_tpt" = "Time to\npeak twitch (ms)",
+                   "delta_hrt" = "Half\nrelaxation time (ms)",
+                   "delta_va" = "Voluntary\nactivation (%)")))
 
+ggsave(here::here('data/figures/layouts/mvc_layout.svg'), width = 200, height = 50, units = "mm")
 ```
 
-# VO2max
+Anaerobic
 ```{r}
-vo2max <- barplot(df, variable = "delta_vo2max", ylab = "Change in VO2max (mL/min)")
+#Prepare data
+anaerobic <- df %>% 
+    dplyr::filter(time == "post") %>% 
+    dplyr::select(c(
+        "id",
+        "treatment",
+        "delta_ppo",
+        "delta_mpo")) %>% 
+    tidyr::pivot_longer(
+        cols = -c(id, treatment),
+        names_to = "variable",
+        values_to = "change"
+    ) %>% 
+    dplyr::mutate(variable = factor(variable, 
+                                    levels = c(
+                                        "delta_ppo",
+                                        "delta_mpo")))
 
-ggsave(here::here('data/figures/vo2max.svg'), width = 60, height = 50, units = "mm")
+#Plot
+anaerobic %>%
+    ggplot2::ggplot(aes(x = treatment, y = change, fill = treatment))+
+    geom_bar(
+        stat = "summary",
+        fun = "mean",
+        color = NA,
+        width = 0.6)+
+    geom_point(size = 1.5,
+               shape = 16,
+               position = position_jitter(width = 0.05),
+               color = "black",
+               alpha = 0.25)+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_text(color = "black", size = 10),
+        text = element_text(size = 10, family="Source Sans Pro", color = "black"),
+        axis.title = element_text(size = 10, family="Source Sans Pro"),
+        axis.text.x = element_text(size = 10),
+        legend.position = "none",
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = (unit(3, "mm")),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        title = element_text(size = 6),
+        strip.background = element_blank(),
+        strip.placement = "outside",  # Move strip labels outside plotting area
+        strip.text = element_text(size = 10)
+    )+
+    scale_fill_manual(
+        values = c("PLA" = pla_color, "CLEN" = clen_color)
+    )+
+    labs(x = NULL,
+         y = "Change (post - pre)")+
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.25))) +
+    facet_wrap(~ variable,
+               scales = "free_y",
+               ncol = 5,
+               labeller = as_labeller(c(
+                   "delta_mpo" = "Mean power output (W)",
+                   "delta_ppo" = "Peak power output (W)")))
 
+ggsave(here::here('data/figures/layouts/sprint_layout.svg'), width = 100, height = 50, units = "mm")
 ```
 
-# iPPO
+Oxygraph
 ```{r}
-ippo <- barplot(df, variable = "delta_ippo", ylab = "Change in Wmax (W)")
-
-ggsave(here::here('data/figures/ippo.svg'), width = 60, height = 50, units = "mm")
-
+df_oxy <- readxl::read_excel(here::here('data-raw/oxy_data.xlsx')) %>% 
+    dplyr::mutate(id = as.factor(id)) %>% 
+    dplyr::mutate(trial = as.numeric(trial)) %>%
+    dplyr::mutate(time = factor(time, levels = c("pre", "post"))) %>%
+    dplyr::mutate(treatment = factor(treatment, levels = c("PLA", "CLEN"))) %>%
+    dplyr::group_by(id) %>% 
+    #Delta compared to first trial
+    #dplyr::mutate(delta_lean_carry_over = lean - lean[trial == "1"]) %>%
+    #dplyr::ungroup() %>% 
+    dplyr::group_by(id, treatment) %>% 
+    dplyr::mutate(delta_leak = leak - leak[time == "pre"]) %>% 
+    dplyr::mutate(delta_cip_0_4 = cip_0_4 - cip_0_4[time == "pre"]) %>% 
+    dplyr::mutate(delta_cip_0_6 = cip_0_6 - cip_0_6[time == "pre"]) %>% 
+    dplyr::mutate(delta_cip_max = cip_max - cip_max[time == "pre"]) %>% 
+    dplyr::mutate(delta_ci_cii_max = ci_cii_max - ci_cii_max[time == "pre"]) %>% 
+    dplyr::mutate(delta_ets = ets - ets[time == "pre"]) %>%
+    dplyr::mutate(delta_ciip = ciip - ciip[time == "pre"]) %>%
+    #Ungroup
+    dplyr::ungroup()
 ```
 
-# appo
+Oxygraph
 ```{r}
-appo <- barplot(df, variable = "delta_appo", ylab = "Change in aerobic peak power (W)")
+#Prepare data
+oxy <- df_oxy %>% 
+    dplyr::filter(time == "post") %>% 
+    dplyr::select(c(
+        "id",
+        "treatment",
+        "delta_leak",
+        "delta_cip_0_4",
+        "delta_cip_0_6",
+        "delta_cip_max",
+        "delta_ci_cii_max",
+        "delta_ets",
+        "delta_ciip")) %>% 
+    tidyr::pivot_longer(
+        cols = -c(id, treatment),
+        names_to = "variable",
+        values_to = "change"
+    ) %>% 
+    dplyr::mutate(variable = factor(variable, 
+                                    levels = c(
+                                        "delta_leak",
+                                        "delta_cip_0_4",
+                                        "delta_cip_0_6",
+                                        "delta_cip_max",
+                                        "delta_ci_cii_max",
+                                        "delta_ets",
+                                        "delta_ciip"))) %>% 
+    dplyr::group_by(treatment, variable) %>% 
+    dplyr::summarize(
+        mean = mean(change),
+        sd = sd(change),
+        n = n(),
+        se = sd / sqrt(n),
+        t_value = qt(0.975, df = n - 1),
+        lower_ci = mean - t_value * se,
+        upper_ci = mean + t_value * se
+    )
 
-ggsave(here::here('data/figures/appo.svg'), width = 60, height = 50, units = "mm")
+#Plot
+oxy %>%
+    ggplot2::ggplot(aes(x = variable, y = mean, fill = treatment))+
+    geom_bar(
+        stat = "summary",
+        fun = "mean",
+        color = NA,
+        width = 0.6,
+        position = position_dodge(width = 0.6))+
+    geom_errorbar(aes(ymin = lower_ci,
+                      ymax = upper_ci,
+                      width = 0.1),
+                  linewidth = 0.1,
+                  position = position_dodge(width = 0.6))+
+    #geom_point(size = 1.5,
+    #           shape = 16,
+    #           position = position_jitterdodge(jitter.width = 0.05,
+    #                                           dodge.width = 0.5),
+    #           color = "black",
+    #           alpha = 0.25)+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_text(color = "black", size = 10),
+        text = element_text(size = 10, family="Source Sans Pro", color = "black"),
+        axis.title = element_text(size = 10, family="Source Sans Pro"),
+        axis.text.x = element_text(size = 10),
+        legend.position = "none",
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = (unit(3, "mm")),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        title = element_text(size = 6),
+        strip.background = element_blank(),
+        strip.placement = "outside",  # Move strip labels outside plotting area
+        strip.text = element_text(size = 10)
+    )+
+    scale_fill_manual(
+        values = c("PLA" = pla_color, "CLEN" = clen_color)
+    )+
+    scale_x_discrete(labels = c(
+        "delta_leak" = "Leak",
+        "delta_cip_0_4" = "CIP\n(0.4 M",
+        "delta_cip_0_6" = "CIP\n(0.6 M",
+        "delta_cip_max" = "CIP\n(Max)",
+        "delta_ci_cii_max" = "CI+CIIP\n(Max)",
+        "delta_ets" = "ETS",
+        "delta_ciip" = "CIIP")
+        )+
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.1)))+
+    labs(x = NULL,
+         y = expression(atop("Respiration", paste("(pmol ", O[2], " × ", s^-1, " × mg ", w.w.^-1, ")"))))
 
-```
-
-# MVC
-```{r}
-mvc <- barplot(df, variable = "delta_mvc", ylab = "Change in MVC (Nm)")
-
-ggsave(here::here('data/figures/mvc.svg'), width = 60, height = 50, units = "mm")
-
-```
-
-# Sprint PPO
-```{r}
-ppo <- barplot(df, variable = "delta_ppo", ylab = "Change in PPO (W)")
-
-ggsave(here::here('data/figures/ppo.svg'), width = 60, height = 50, units = "mm")
-
-```
-
-# Sprint MPO
-```{r}
-mpo <- barplot(df, variable = "delta_mpo", ylab = "Change in MPO (W)")
-
-ggsave(here::here('data/figures/mpo.svg'), width = 60, height = 50, units = "mm")
+    
+ggsave(here::here('data/figures/layouts/oxygraph.svg'), width = 200, height = 60, units = "mm")
 
 ```
 
