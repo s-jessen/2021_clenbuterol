@@ -107,9 +107,9 @@
 <polyline points='519.21,142.80 519.21,140.06 ' style='stroke-width: 1.07; stroke: #333333; stroke-linecap: butt;' />
 <text x='96.80' y='151.56' text-anchor='middle' style='font-size: 10.00px; font-family: "Source Sans Pro";' textLength='19.81px' lengthAdjust='spacingAndGlyphs'>Leak</text>
 <text x='167.20' y='151.56' text-anchor='middle' style='font-size: 10.00px; font-family: "Source Sans Pro";' textLength='13.99px' lengthAdjust='spacingAndGlyphs'>CIP</text>
-<text x='167.20' y='162.36' text-anchor='middle' style='font-size: 10.00px; font-family: "Source Sans Pro";' textLength='24.72px' lengthAdjust='spacingAndGlyphs'>(0.4 M</text>
+<text x='167.20' y='162.36' text-anchor='middle' style='font-size: 10.00px; font-family: "Source Sans Pro";' textLength='27.74px' lengthAdjust='spacingAndGlyphs'>(0.4 M)</text>
 <text x='237.61' y='151.56' text-anchor='middle' style='font-size: 10.00px; font-family: "Source Sans Pro";' textLength='13.99px' lengthAdjust='spacingAndGlyphs'>CIP</text>
-<text x='237.61' y='162.36' text-anchor='middle' style='font-size: 10.00px; font-family: "Source Sans Pro";' textLength='24.72px' lengthAdjust='spacingAndGlyphs'>(0.6 M</text>
+<text x='237.61' y='162.36' text-anchor='middle' style='font-size: 10.00px; font-family: "Source Sans Pro";' textLength='27.74px' lengthAdjust='spacingAndGlyphs'>(0.6 M)</text>
 <text x='308.01' y='151.56' text-anchor='middle' style='font-size: 10.00px; font-family: "Source Sans Pro";' textLength='13.99px' lengthAdjust='spacingAndGlyphs'>CIP</text>
 <text x='308.01' y='162.36' text-anchor='middle' style='font-size: 10.00px; font-family: "Source Sans Pro";' textLength='22.82px' lengthAdjust='spacingAndGlyphs'>(Max)</text>
 <text x='378.41' y='151.56' text-anchor='middle' style='font-size: 10.00px; font-family: "Source Sans Pro";' textLength='29.92px' lengthAdjust='spacingAndGlyphs'>CI+CIIP</text>
