@@ -1,0 +1,296 @@
+---
+title: "for"
+format: html
+editor: source
+self-contained: true
+---
+
+Load libraries
+```{r, include = FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, error=FALSE)
+source(here::here("R/libraries.R"))
+source(here::here("R/colors.R"))
+source(here::here("R/functions.R"))
+```
+
+Load data
+```{r}
+df <- readxl::read_excel(here::here('data-raw/clen_data.xlsx')) %>% 
+    dplyr::mutate(id = as.factor(id)) %>% 
+    dplyr::mutate(trial = as.numeric(trial)) %>%
+    dplyr::mutate(time = factor(time, levels = c("pre", "post"))) %>%
+    dplyr::mutate(treatment = factor(treatment, levels = c("PLA", "CLEN"))) %>%
+    dplyr::group_by(id) %>% 
+    #Delta compared to first trial
+    dplyr::mutate(delta_lean_carry_over = lean - lean[trial == "1"]) %>%
+    dplyr::mutate(delta_fat_carry_over = fat - fat[trial == "1"]) %>%
+    dplyr::ungroup() %>% 
+    dplyr::group_by(id, treatment) %>% 
+    #Whole body
+    dplyr::mutate(delta_lean = lean - lean[treatment == "PLA"]) %>%
+    dplyr::mutate(delta_fat = fat - fat[treatment == "PLA"]) %>% 
+    dplyr::mutate(delta_fat_p = fat_p - fat_p[treatment == "PLA"]) %>% 
+    #Leg
+    dplyr::mutate(delta_leg_lean = leg_lean - leg_lean[treatment == "PLA"]) %>%
+    dplyr::mutate(delta_leg_fat = leg_fat - leg_fat[treatment == "PLA"]) %>% 
+    dplyr::mutate(delta_leg_fat_p = leg_fat_p - leg_fat_p[treatment == "PLA"]) %>% 
+    #Arm
+    dplyr::mutate(delta_arm_lean = arm_lean - arm_lean[treatment == "PLA"]) %>%
+    dplyr::mutate(delta_arm_fat = arm_fat - arm_fat[treatment == "PLA"]) %>% 
+    dplyr::mutate(delta_arm_fat_p = arm_fat_p - arm_fat_p[treatment == "PLA"]) %>% 
+    #Torso
+    dplyr::mutate(delta_torso_lean = torso_lean - torso_lean[treatment == "PLA"]) %>%
+    dplyr::mutate(delta_torso_fat = torso_fat - torso_fat[treatment == "PLA"]) %>% 
+    dplyr::mutate(delta_torso_fat_p = torso_fat_p - torso_fat_p[treatment == "PLA"]) %>%
+    #Aerobic
+    dplyr::mutate(delta_vo2max = vo2max - vo2max[treatment == "PLA"]) %>% 
+    dplyr::mutate(delta_kondital = kondital - kondital[treatment == "PLA"]) %>% 
+    dplyr::mutate(delta_ippo = ippo - ippo[treatment == "PLA"]) %>% 
+    dplyr::mutate(delta_appo = appo - appo[treatment == "PLA"]) %>%
+    #Anaerobic
+    dplyr::mutate(delta_ppo = ppo - ppo[treatment == "PLA"]) %>%
+    dplyr::mutate(delta_mpo = mpo - mpo[treatment == "PLA"]) %>%
+    #Cardiac
+    dplyr::mutate(delta_lv_mass = lv_mass - lv_mass[treatment == "PLA"]) %>% 
+    dplyr::mutate(delta_lv_sv = lv_sv - lv_sv[treatment == "PLA"]) %>% 
+    dplyr::mutate(delta_hr = hr - hr[treatment == "PLA"]) %>% 
+    dplyr::mutate(delta_co = co - co[treatment == "PLA"]) %>% 
+    dplyr::mutate(delta_ef = ef - ef[treatment == "PLA"]) %>% 
+    #MVC
+    dplyr::mutate(delta_mvc = mvc - mvc[treatment == "PLA"]) %>% 
+    dplyr::mutate(delta_tpot = tpot - tpot[treatment == "PLA"]) %>% 
+    dplyr::mutate(delta_tpt = tpt - tpt[treatment == "PLA"]) %>% 
+    dplyr::mutate(delta_hrt = hrt - hrt[treatment == "PLA"]) %>% 
+    dplyr::mutate(delta_va = va - va[treatment == "PLA"]) %>%
+    #Ungroup
+    dplyr::ungroup()
+
+df_effect_size <- df %>% 
+    dplyr::filter(time == "post" & id != "6") %>% 
+    group_by(id) %>% 
+    #Whole body
+    dplyr::mutate(effect_lean = delta_lean - delta_lean[treatment == "PLA"]) %>%
+    dplyr::mutate(effect_fat = delta_fat - delta_fat[treatment == "PLA"]) %>% 
+    dplyr::mutate(effect_fat_p = delta_fat_p - delta_fat_p[treatment == "PLA"]) %>% 
+    #Leg
+    dplyr::mutate(effect_leg_lean = delta_leg_lean - delta_leg_lean[treatment == "PLA"]) %>%
+    dplyr::mutate(effect_leg_fat = delta_leg_fat - delta_leg_fat[treatment == "PLA"]) %>% 
+    dplyr::mutate(effect_leg_fat_p = delta_leg_fat_p - delta_leg_fat_p[treatment == "PLA"]) %>% 
+    #Arm
+    dplyr::mutate(effect_arm_lean = delta_arm_lean - delta_arm_lean[treatment == "PLA"]) %>%
+    dplyr::mutate(effect_arm_fat = delta_arm_fat - delta_arm_fat[treatment == "PLA"]) %>% 
+    dplyr::mutate(effect_arm_fat_p = delta_arm_fat_p - delta_arm_fat_p[treatment == "PLA"]) %>% 
+    #Torso
+    dplyr::mutate(effect_torso_lean = delta_torso_lean - delta_torso_lean[treatment == "PLA"]) %>%
+    dplyr::mutate(effect_torso_fat = delta_torso_fat - delta_torso_fat[treatment == "PLA"]) %>% 
+    dplyr::mutate(effect_torso_fat_p = delta_torso_fat_p - delta_torso_fat_p[treatment == "PLA"]) %>%
+    #Aerobic
+    dplyr::mutate(effect_vo2max = delta_vo2max - delta_vo2max[treatment == "PLA"]) %>% 
+    dplyr::mutate(effect_kondital = delta_kondital - delta_kondital[treatment == "PLA"]) %>% 
+    dplyr::mutate(effect_ippo = delta_ippo - delta_ippo[treatment == "PLA"]) %>% 
+    dplyr::mutate(effect_appo = delta_appo - delta_appo[treatment == "PLA"]) %>%
+    #Anaerobic
+    dplyr::mutate(effect_ppo = delta_ppo - delta_ppo[treatment == "PLA"]) %>%
+    dplyr::mutate(effect_mpo = delta_mpo - delta_mpo[treatment == "PLA"]) %>%
+    #Cardiac
+    dplyr::mutate(effect_lv_mass = delta_lv_mass - delta_lv_mass[treatment == "PLA"]) %>% 
+    dplyr::mutate(effect_lv_sv = delta_lv_sv - delta_lv_sv[treatment == "PLA"]) %>% 
+    dplyr::mutate(effect_hr = delta_hr - delta_hr[treatment == "PLA"]) %>% 
+    dplyr::mutate(effect_co = delta_co - delta_co[treatment == "PLA"]) %>% 
+    dplyr::mutate(effect_ef = delta_ef - delta_ef[treatment == "PLA"]) %>% 
+    #MVC
+    dplyr::mutate(effect_mvc = delta_mvc - delta_mvc[treatment == "PLA"]) %>% 
+    dplyr::mutate(effect_tpot = delta_tpot - delta_tpot[treatment == "PLA"]) %>% 
+    dplyr::mutate(effect_tpt = delta_tpt - delta_tpt[treatment == "PLA"]) %>% 
+    dplyr::mutate(effect_hrt = delta_hrt - delta_hrt[treatment == "PLA"]) %>% 
+    dplyr::mutate(effect_va = delta_va - delta_va[treatment == "PLA"]) %>%
+    #Ungroup
+    dplyr::ungroup()
+    
+```
+
+#Regular figs
+Whole body comp
+```{r}
+#Prepare data
+body_comp <- df_effect_size %>% 
+    dplyr::filter(time == "post" & treatment == "CLEN") %>% 
+    dplyr::select(c(
+        "id",
+        "treatment",
+        "effect_lean",
+        "effect_fat",
+        "effect_fat_p")) %>% 
+    tidyr::pivot_longer(
+        cols = -c(id, treatment),
+        names_to = "variable",
+        values_to = "change"
+    ) %>% 
+    dplyr::mutate(
+        tissue = case_when(
+            stringr::str_detect(variable, "lean$") ~ "lean",
+            stringr::str_detect(variable, "fat$") ~ "fat",
+            stringr::str_detect(variable, "fat_p$") ~ "fat_p")
+        ) %>% 
+    dplyr::mutate(tissue = factor(tissue,
+                                     levels = c("lean",
+                                                "fat",
+                                                "fat_p")))
+
+#Plot
+body_comp %>%
+    ggplot2::ggplot(aes(x = treatment, y = change, fill = treatment))+
+    geom_bar(
+        stat = "summary",
+        fun = "mean",
+        color = NA,
+        width = 0.6)+
+    geom_point(size = 1.5,
+               shape = 16,
+               position = position_jitter(width = 0.05),
+               color = "black",
+               alpha = 0.25)+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_text(color = "black", size = 10),
+        text = element_text(size = 10, family="Source Sans Pro", color = "black"),
+        axis.title = element_text(size = 10, family="Source Sans Pro"),
+        axis.text.x = element_text(size = 10),
+        legend.position = "none",
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = (unit(3, "mm")),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        title = element_text(size = 6),
+        strip.background = element_blank(),
+        strip.placement = "outside",  # Move strip labels outside plotting area
+        strip.text = element_text(size = 10,
+                                  face = "bold")
+    )+
+    scale_fill_manual(
+        values = c("PLA" = pla_color, "CLEN" = clen_color)
+    )+
+    labs(x = NULL,
+         y = "Change (post - pre)\n")+
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.25))) +
+        facet_wrap(~tissue,
+               scales = "free_y",
+               labeller = as_labeller(c(
+                   lean = "Lean (kg)",
+                   fat = "Fat (kg)",
+                   fat_p = "Fat (%.)")))
+
+ggsave(here::here('data/figures/layouts/body_comp_layout.svg'), width = 150, height = 50, units = "mm")
+
+```
+
+Regional 
+```{r}
+#Prepare data
+body_comp <- df_effect_size %>% 
+    dplyr::filter(time == "post" & treatment == "CLEN") %>% 
+    dplyr::select(c(
+        "id",
+        "treatment",
+        "effect_leg_lean",
+        "effect_leg_fat",
+        "effect_leg_fat_p",
+        "effect_arm_lean",
+        "effect_arm_fat",
+        "effect_arm_fat_p",
+        "effect_torso_lean",
+        "effect_torso_fat",
+        "effect_torso_fat_p")) %>% 
+    tidyr::pivot_longer(
+        cols = -c(id, treatment),
+        names_to = "variable",
+        values_to = "change"
+    ) %>% 
+    dplyr::mutate(
+        body_part = case_when(
+            stringr::str_detect(variable, "^effect_arm") ~ "arm",
+            stringr::str_detect(variable, "^effect_leg") ~ "leg",
+            stringr::str_detect(variable, "^effect_torso") ~ "torso"),
+        tissue = case_when(
+            stringr::str_detect(variable, "lean$") ~ "lean",
+            stringr::str_detect(variable, "fat$") ~ "fat",
+            stringr::str_detect(variable, "fat_p$") ~ "fat_p")
+        ) %>% 
+    dplyr::mutate(body_part = factor(body_part,
+                                     levels = c("torso",
+                                                "leg",
+                                                "arm"))) %>% 
+    dplyr::mutate(tissue = factor(tissue,
+                                     levels = c("lean",
+                                                "fat",
+                                                "fat_p")))
+
+#Plot
+body_comp %>%
+    ggplot2::ggplot(aes(x = body_part, y = change, fill = treatment))+
+    geom_bar(
+        stat = "summary",
+        fun = "mean",
+        color = NA,
+        width = 0.6,
+        position = position_dodge(width = 0.6))+
+    geom_point(size = 1.5,
+               shape = 16,
+               position = position_jitterdodge(jitter.width = 0.05,
+                                               dodge.width = 0.6),
+               color = "black",
+               alpha = 0.25)+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_text(color = "black", size = 10),
+        text = element_text(size = 10, family="Source Sans Pro", color = "black"),
+        axis.title = element_text(size = 10, family="Source Sans Pro"),
+        axis.text.x = element_text(size = 10),
+        legend.position = "none",
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = (unit(3, "mm")),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        title = element_text(size = 6),
+        strip.background = element_blank(),
+        strip.placement = "outside", 
+        strip.text = element_text(size = 10,
+                                  face = "bold")
+    )+
+    scale_fill_manual(
+        values = c("PLA" = pla_color, "CLEN" = clen_color)
+    )+
+    scale_x_discrete(labels = c(
+        arm = "Arms",
+        torso = "Torso",
+        leg = "Leg"))+
+    labs(x = NULL,
+         y = "Change (post - pre)\n")+
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.25))) +
+    facet_wrap(~tissue,
+               #switch = "y",
+               scales = "free_y",
+               labeller = as_labeller(c(
+                   lean = "Lean (kg)",
+                   fat = "Fat (kg)",
+                   fat_p = "Fat (%.)")))
+
+ggsave(here::here('data/figures/layouts/body_comp_layout.svg'), width = 150, height = 50, units = "mm")
+
+```
+
+

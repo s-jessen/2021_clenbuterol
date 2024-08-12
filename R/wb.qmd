@@ -1,0 +1,193 @@
+---
+title: "for"
+format: html
+editor: source
+self-contained: true
+---
+
+Load libraries
+```{r, include = FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, error=FALSE)
+source(here::here("R/libraries.R"))
+source(here::here("R/colors.R"))
+source(here::here("R/functions.R"))
+```
+
+Load data
+```{r}
+df <- readxl::read_excel(here::here('data-raw/wb.xlsx')) %>% 
+    dplyr::mutate(id = as.factor(id)) %>% 
+    dplyr::mutate(trial = as.numeric(trial)) %>%
+    dplyr::mutate(time = factor(time, levels = c("pre", "post"))) %>%
+    dplyr::mutate(treatment = factor(treatment, levels = c("PLA", "CLEN"))) %>%
+    dplyr::mutate(intervention_time = factor(intervention_time,
+                                             levels = c("pre",
+                                                        "post"))
+                  )
+```
+
+Post clen, post intervention
+```{r}
+#Prepare data
+wb <- df %>% 
+    dplyr::filter(intervention_time == "post" &
+                  time == "post") %>% 
+    dplyr::select(c(
+        "id",
+        "treatment",
+        "p70s6k_p_ratio",
+        "4ebp1_p_ratio",
+        "erk_p_ratio",
+        "pka_p")) %>% 
+    tidyr::pivot_longer(
+        cols = -c(id, treatment),
+        names_to = "variable",
+        values_to = "change"
+    ) %>% 
+    dplyr::mutate(
+        target = case_when(
+            stringr::str_detect(variable, "^p70s6k") ~ "P70S6K",
+            stringr::str_detect(variable, "^4ebp1") ~ "4EBP1",
+            stringr::str_detect(variable, "^erk") ~ "ERK",
+            stringr::str_detect(variable, "^pka") ~ "PKA")
+        ) %>% 
+    dplyr::mutate(target = factor(target,
+                                     levels = c("PKA",
+                                                "ERK",
+                                                "P70S6K",
+                                                "4EBP1")))
+
+#Plot
+wb %>%
+    ggplot2::ggplot(aes(x = target, y = change, fill = treatment))+
+    geom_bar(
+        stat = "summary",
+        fun = "mean",
+        color = NA,
+        width = 0.6,
+        position = position_dodge(width = 0.6))+
+    geom_point(size = 1.5,
+               shape = 16,
+               position = position_jitterdodge(jitter.width = 0.05,
+                                               dodge.width = 0.6),
+               color = "black",
+               alpha = 0.25)+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_text(color = "black", size = 10),
+        text = element_text(size = 10, family="Source Sans Pro", color = "black"),
+        axis.title = element_text(size = 10, family="Source Sans Pro"),
+        axis.text.x = element_text(size = 10),
+        legend.position = "none",
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = (unit(3, "mm")),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        title = element_text(size = 10),
+        strip.background = element_blank(),
+        strip.placement = "outside",  # Move strip labels outside plotting area
+        strip.text = element_text(size = 10,
+                                  face = "bold")
+    )+
+    scale_fill_manual(
+        values = c("PLA" = pla_color, "CLEN" = clen_color)
+    )+
+    labs(x = NULL,
+         y = "Phosphorylation ratio (phosphorylated / total)",
+         title = "Post trial and post clen administration")
+
+
+#ggsave(here::here('data/figures/layouts/body_comp_layout_w_lines.svg'), width = 150, height = 50, units = "mm")
+```
+Pre and post intervention, post clen
+```{r}
+#Prepare data
+wb <- df %>% 
+    dplyr::filter(time == "post") %>% 
+    dplyr::select(c(
+        "id",
+        "treatment",
+        "intervention_time",
+        "p70s6k_p_ratio",
+        "4ebp1_p_ratio",
+        "erk_p_ratio",
+        "pka_p")) %>% 
+    tidyr::pivot_longer(
+        cols = -c(id, treatment, intervention_time),
+        names_to = "variable",
+        values_to = "change"
+    ) %>% 
+    dplyr::mutate(
+        target = case_when(
+            stringr::str_detect(variable, "^p70s6k") ~ "P70S6K",
+            stringr::str_detect(variable, "^4ebp1") ~ "4EBP1",
+            stringr::str_detect(variable, "^erk") ~ "ERK",
+            stringr::str_detect(variable, "^pka") ~ "PKA")
+        ) %>% 
+    dplyr::mutate(target = factor(target,
+                                     levels = c("PKA",
+                                                "ERK",
+                                                "P70S6K",
+                                                "4EBP1"))) %>% 
+    dplyr::mutate(intervention_time = factor(intervention_time,
+                                     levels = c("pre", "post")))
+
+#Plot
+wb %>%
+    ggplot2::ggplot(aes(x = target, y = change, fill = interaction(intervention_time, treatment)))+
+    geom_bar(
+        stat = "summary",
+        fun = "mean",
+        color = NA,
+        width = 0.6,
+        position = position_dodge(width = 0.6))+
+    geom_point(size = 1.5,
+               shape = 16,
+               position = position_jitterdodge(jitter.width = 0.05,
+                                               dodge.width = 0.6),
+               color = "black",
+               alpha = 0.25)+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_text(color = "black", size = 10),
+        text = element_text(size = 10, family="Source Sans Pro", color = "black"),
+        axis.title = element_text(size = 10, family="Source Sans Pro"),
+        axis.text.x = element_text(size = 10),
+        #legend.position = "none",
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = (unit(3, "mm")),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        title = element_text(size = 10),
+        strip.background = element_blank(),
+        strip.placement = "outside",  # Move strip labels outside plotting area
+        strip.text = element_text(size = 10,
+                                  face = "bold")
+    )+
+    #scale_fill_manual(
+    ##    values = c("PLA" = pla_color, "CLEN" = clen_color)
+    #)+
+    labs(x = NULL,
+         y = "Phosphorylation ratio (phosphorylated / total)",
+         title = "Post trial and post clen administration")
+
+
+#ggsave(here::here('data/figures/layouts/body_comp_layout_w_lines.svg'), width = 150, height = 50, units = "mm")
+```
+
+
+#Udtryk som pre/post ratio for hver trial day.

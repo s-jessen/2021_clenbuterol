@@ -24,6 +24,7 @@ df <- readxl::read_excel(here::here('data-raw/clen_data.xlsx')) %>%
     #Delta compared to first trial
     dplyr::mutate(delta_lean_carry_over = lean - lean[trial == "1"]) %>%
     dplyr::mutate(delta_fat_carry_over = fat - fat[trial == "1"]) %>%
+    dplyr::mutate(delta_vo2max_carry_over = vo2max - vo2max[trial == "1"]) %>%
     dplyr::ungroup() %>% 
     dplyr::group_by(id, treatment) %>% 
     #Whole body
@@ -136,6 +137,40 @@ df %>%
 ggsave(here::here('data/figures/carry_over_fat.svg'), height = 100, width = 200, units = "mm")
 ```
 
+VO2max
+```{r}
+df %>% 
+    dplyr::filter(!is.na(start_treatment)) %>% 
+    ggplot(aes(x = trial, y = delta_vo2max_carry_over))+
+    stat_summary(aes(group = id), fun = "mean", geom = "line", size = 0.5, na.rm = TRUE, show.legend = FALSE, alpha = 0.8, color = "gray")+
+    stat_summary(aes(group = start_treatment), fun = "mean", geom = "line", size = 0.5, na.rm = TRUE, show.legend = FALSE, color = "red")+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.1),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_rect(fill = "white"),
+        axis.line = element_blank(),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+        axis.ticks = element_line(linewidth = 0.1),
+        axis.title = element_text(size = 8, family="Source Sans Pro"),
+        axis.title.x = element_text(size = 8, family="Source Sans Pro"),
+        axis.title.y = element_text(size = 8, family="Source Sans Pro"),
+        text = element_text(size = 10, family="Source Sans Pro"),
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        strip.background = element_blank()
+    )+
+    labs(y = "VO2max (difference to exp. trial 1)",
+         x = "Experiment trial")+
+    facet_grid(~start_treatment,
+               labeller = as_labeller(c(CLEN = "Started w. CLEN",
+                                      PLA = "Started w. PLA")))
+
+ggsave(here::here('data/figures/carry_over_vo2max.svg'), height = 60, width = 200, units = "mm")
+```
+
 #Regular figs
 Whole body comp
 ```{r}
@@ -177,6 +212,8 @@ body_comp %>%
                position = position_jitter(width = 0.05),
                color = "black",
                alpha = 0.25)+
+    geom_line(aes(group = id),
+              alpha = 0.1)+
     geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
     theme(
         panel.background = element_blank(),
@@ -205,7 +242,7 @@ body_comp %>%
         values = c("PLA" = pla_color, "CLEN" = clen_color)
     )+
     labs(x = NULL,
-         y = "Change (post - pre)\n")+
+         y = "Change (post - pre)")+
     scale_y_continuous(expand = expansion(mult = c(0.05, 0.25))) +
         facet_wrap(~tissue,
                scales = "free_y",
@@ -214,7 +251,7 @@ body_comp %>%
                    fat = "Fat (kg)",
                    fat_p = "Fat (%.)")))
 
-ggsave(here::here('data/figures/layouts/body_comp_layout.svg'), width = 150, height = 50, units = "mm")
+ggsave(here::here('data/figures/layouts/body_comp_layout_w_lines.svg'), width = 150, height = 50, units = "mm")
 
 ```
 
@@ -880,5 +917,66 @@ oxy_carry_over %>%
     labs(x = NULL,
          y = expression(atop("Respiration", paste("(pmol ", O[2], " × ", s^-1, " × mg ", w.w.^-1, ")"))))+
     facet_grid(~start_treatment)
+```
+
+VO2max
+```{r}
+df %>%
+    dplyr::filter(time == "post") %>% 
+    dplyr::filter(!is.na(start_treatment)) %>% 
+    ggplot2::ggplot(aes(x = treatment, y = delta_vo2max, fill = treatment))+
+    geom_bar(
+        stat = "summary",
+        fun = "mean",
+        color = NA,
+        width = 0.6)+
+    geom_point(size = 1.5,
+               shape = 16,
+               position = position_jitter(width = 0.05),
+               color = "black",
+               alpha = 0.25)+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_text(color = "black", size = 10),
+        text = element_text(size = 10, family="Source Sans Pro", color = "black"),
+        axis.title = element_text(size = 10, family="Source Sans Pro"),
+        axis.text.x = element_text(size = 10),
+        legend.position = "none",
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = (unit(3, "mm")),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        title = element_text(size = 6),
+        strip.background = element_blank(),
+        strip.placement = "outside",  # Move strip labels outside plotting area
+        strip.text = element_text(size = 10)
+    )+
+    scale_fill_manual(
+        values = c("PLA" = pla_color, "CLEN" = clen_color)
+    )+
+    labs(x = NULL,
+         y = "Change (post - pre)")+
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.25))) +
+    facet_wrap(~ start_treatment,
+               labeller = as_labeller(c(
+                   PLA = "Started w. PLA",
+                   CLEN = "Started w. CLEN")))
+
+ggsave(here::here('data/figures/carry_over_vo2max.svg'), height = 50, width = 125, units = "mm")
+```
+
+Summary 
+```{r}
+summary <- df %>%
+    dplyr::filter(time == "post") %>% 
+    dplyr::group_by(treatment) %>%
+    dplyr::summarize(mean = mean(delta_lean))
 ```
 
