@@ -84,15 +84,15 @@ wb %>%
         text = element_text(size = 10, family="Source Sans Pro", color = "black"),
         axis.title = element_text(size = 10, family="Source Sans Pro"),
         axis.text.x = element_text(size = 10),
-        legend.position = "none",
+        #legend.position = c(0.9, 0.85),
         legend.title = element_blank(),
         legend.key = element_blank(),
-        legend.key.size = (unit(3, "mm")),
+        legend.key.size = (unit(5, "mm")),
         legend.background = element_blank(),
         legend.box.background = element_blank(),
+        legend.text = element_text(size = 8),
         title = element_text(size = 10),
         strip.background = element_blank(),
-        strip.placement = "outside",  # Move strip labels outside plotting area
         strip.text = element_text(size = 10,
                                   face = "bold")
     )+
@@ -101,11 +101,12 @@ wb %>%
     )+
     labs(x = NULL,
          y = "Phosphorylation ratio (phosphorylated / total)",
-         title = "Post trial and post clen administration")
+         title = "Only post trial. Only post clen administration")
 
 
-#ggsave(here::here('data/figures/layouts/body_comp_layout_w_lines.svg'), width = 150, height = 50, units = "mm")
+ggsave(here::here('data/figures/wb/all_post_biopsy_post_intervention.svg'), width = 150, height = 75, units = "mm")
 ```
+
 Pre and post intervention, post clen
 ```{r}
 #Prepare data
@@ -166,6 +167,105 @@ wb %>%
         text = element_text(size = 10, family="Source Sans Pro", color = "black"),
         axis.title = element_text(size = 10, family="Source Sans Pro"),
         axis.text.x = element_text(size = 10),
+        #legend.position = c(0.95, 0.95),
+        legend.text = element_text(size = 8),
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = (unit(3, "mm")),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        title = element_text(size = 10),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 10,
+                                  face = "bold")
+    )+
+    scale_fill_manual(
+        values = c("pre.PLA" = pla_color,
+                   "pre.CLEN" = clen_color,
+                   "post.PLA" = "#8a8a8a",
+                   "post.CLEN" = "brown"),
+        labels = c("pre.PLA" = "PLA, pre intervention",
+                   "pre.CLEN" = "CLEN, pre intervention",
+                   "post.PLA" = "PLA, post intervention",
+                   "post.CLEN" = "CLEN, post intervention")
+    )+
+    labs(x = NULL,
+         y = "Phosphorylation ratio (phosphorylated / total)",
+         title = "Pre and post trial. Only post clen administration")
+
+
+ggsave(here::here('data/figures/wb/all_post_biopsy_pre_and_post_intervention.svg'), width = 150, height = 75, units = "mm")
+```
+
+Pre and post intervention, post clen
+```{r}
+#Prepare data
+wb <- df %>% 
+    dplyr::select(c(
+        "id",
+        "treatment",
+        "intervention_time",
+        "time",
+        "p70s6k_p_ratio",
+        "4ebp1_p_ratio",
+        "erk_p_ratio",
+        "pka_p")) %>% 
+    dplyr::group_by(id, treatment, intervention_time) %>%
+    dplyr::mutate(
+        p70s6k_p_ratio = p70s6k_p_ratio / p70s6k_p_ratio[time == "pre"],
+        `4ebp1_p_ratio` = `4ebp1_p_ratio` / `4ebp1_p_ratio`[time == "pre"],
+        erk_p_ratio = erk_p_ratio / erk_p_ratio[time == "pre"],
+        pka_p = pka_p / pka_p[time == "pre"]) %>% 
+    dplyr::ungroup() %>%
+    dplyr::filter(time == "post") %>% 
+    dplyr::select(-"time") %>% 
+    tidyr::pivot_longer(
+        cols = -c(id, treatment, intervention_time),
+        names_to = "variable",
+        values_to = "change"
+    ) %>% 
+    dplyr::mutate(
+        target = case_when(
+            stringr::str_detect(variable, "^p70s6k") ~ "P70S6K",
+            stringr::str_detect(variable, "^4ebp1") ~ "4EBP1",
+            stringr::str_detect(variable, "^erk") ~ "ERK",
+            stringr::str_detect(variable, "^pka") ~ "PKA")
+        ) %>% 
+    dplyr::mutate(target = factor(target,
+                                     levels = c("PKA",
+                                                "ERK",
+                                                "P70S6K",
+                                                "4EBP1"))) %>% 
+    dplyr::mutate(intervention_time = factor(intervention_time,
+                                     levels = c("pre", "post")))
+
+#Plot
+wb %>%
+    ggplot2::ggplot(aes(x = target, y = change, fill = interaction(intervention_time, treatment)))+
+    geom_bar(
+        stat = "summary",
+        fun = "mean",
+        color = NA,
+        width = 0.6,
+        position = position_dodge(width = 0.6))+
+    geom_point(size = 1.5,
+               shape = 16,
+               position = position_jitterdodge(jitter.width = 0.05,
+                                               dodge.width = 0.6),
+               color = "black",
+               alpha = 0.25)+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_text(color = "black", size = 10),
+        text = element_text(size = 10, family="Source Sans Pro", color = "black"),
+        axis.title = element_text(size = 10, family="Source Sans Pro"),
+        axis.text.x = element_text(size = 10),
         #legend.position = "none",
         legend.title = element_blank(),
         legend.key = element_blank(),
@@ -174,20 +274,23 @@ wb %>%
         legend.box.background = element_blank(),
         title = element_text(size = 10),
         strip.background = element_blank(),
-        strip.placement = "outside",  # Move strip labels outside plotting area
         strip.text = element_text(size = 10,
                                   face = "bold")
     )+
-    #scale_fill_manual(
-    ##    values = c("PLA" = pla_color, "CLEN" = clen_color)
-    #)+
+    scale_fill_manual(
+        values = c("pre.PLA" = pla_color,
+                   "pre.CLEN" = clen_color,
+                   "post.PLA" = "#8a8a8a",
+                   "post.CLEN" = "brown"),
+        labels = c("pre.PLA" = "PLA, pre intervention",
+                   "pre.CLEN" = "PLA, pre intervention",
+                   "post.PLA" = "PLA, post intervention",
+                   "post.CLEN" = "CLEN, post intervention")
+    )+
     labs(x = NULL,
-         y = "Phosphorylation ratio (phosphorylated / total)",
-         title = "Post trial and post clen administration")
+         y = "Phosphorylation ratio (phosphorylated / total)\n/(post/pre)",
+         title = "Pre and post trial. Ratio of pre vs. post clen administration")
 
 
-#ggsave(here::here('data/figures/layouts/body_comp_layout_w_lines.svg'), width = 150, height = 50, units = "mm")
+ggsave(here::here('data/figures/wb/all_pre_and_post_biopsy_pre_and_post_intervention.svg'), width = 150, height = 75, units = "mm")
 ```
-
-
-#Udtryk som pre/post ratio for hver trial day.
