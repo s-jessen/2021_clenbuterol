@@ -118,7 +118,6 @@ wb <- df %>%
         "intervention_time",
         "p70s6k_p_ratio",
         "4ebp1_p_ratio",
-        "erk_p_ratio",
         "pka_p")) %>% 
     tidyr::pivot_longer(
         cols = -c(id, treatment, intervention_time),
@@ -129,16 +128,15 @@ wb <- df %>%
         target = case_when(
             stringr::str_detect(variable, "^p70s6k") ~ "P70S6K",
             stringr::str_detect(variable, "^4ebp1") ~ "4EBP1",
-            stringr::str_detect(variable, "^erk") ~ "ERK",
             stringr::str_detect(variable, "^pka") ~ "PKA")
         ) %>% 
     dplyr::mutate(target = factor(target,
                                      levels = c("PKA",
-                                                "ERK",
                                                 "P70S6K",
                                                 "4EBP1"))) %>% 
     dplyr::mutate(intervention_time = factor(intervention_time,
-                                     levels = c("pre", "post")))
+                                     levels = c("pre", "post"))) %>% 
+    dplyr::mutate(change = log10(change * 100))
 
 #Plot
 wb %>%
@@ -155,7 +153,7 @@ wb %>%
                                                dodge.width = 0.6),
                color = "black",
                alpha = 0.25)+
-    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    #geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
     theme(
         panel.background = element_blank(),
         panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
@@ -168,10 +166,10 @@ wb %>%
         axis.title = element_text(size = 10, family="Source Sans Pro"),
         axis.text.x = element_text(size = 10),
         #legend.position = c(0.95, 0.95),
-        legend.text = element_text(size = 8),
+        legend.text = element_text(size = 10),
         legend.title = element_blank(),
         legend.key = element_blank(),
-        legend.key.size = (unit(3, "mm")),
+        legend.key.size = (unit(5, "mm")),
         legend.background = element_blank(),
         legend.box.background = element_blank(),
         title = element_text(size = 10),
@@ -181,20 +179,22 @@ wb %>%
     )+
     scale_fill_manual(
         values = c("pre.PLA" = pla_color,
-                   "pre.CLEN" = clen_color,
+                   "pre.CLEN" = "#86b3ce",
                    "post.PLA" = "#8a8a8a",
-                   "post.CLEN" = "brown"),
+                   "post.CLEN" = clen_color),
         labels = c("pre.PLA" = "PLA, pre intervention",
                    "pre.CLEN" = "CLEN, pre intervention",
                    "post.PLA" = "PLA, post intervention",
                    "post.CLEN" = "CLEN, post intervention")
     )+
+    scale_y_continuous(expand = expansion(mult = c(0, 0.25))) +
     labs(x = NULL,
-         y = "Phosphorylation ratio (phosphorylated / total)",
-         title = "Pre and post trial. Only post clen administration")
+         y = "Phosphorylation ratio\n(phosphorylated / total)",
+         title = NULL)+
+    facet_grid(~target,
+               scales = "free")
 
-
-ggsave(here::here('data/figures/wb/all_post_biopsy_pre_and_post_intervention.svg'), width = 150, height = 75, units = "mm")
+ggsave(here::here('data/figures/wb/all_post_biopsy_pre_and_post_intervention.svg'), width = 150, height = 60, units = "mm")
 ```
 
 Pre and post intervention, post clen
@@ -293,4 +293,230 @@ wb %>%
 
 
 ggsave(here::here('data/figures/wb/all_pre_and_post_biopsy_pre_and_post_intervention.svg'), width = 150, height = 75, units = "mm")
+```
+
+Only pre phosphorylations
+```{r}
+#Prepare data
+wb <- df %>% 
+    #dplyr::filter(time == "pre") %>% 
+    dplyr::select(c(
+        "id",
+        "treatment",
+        "time",
+        "intervention_time",
+        "p70s6k_p_ratio",
+        "4ebp1_p_ratio",
+        "erk_p_ratio",
+        "pka_p")) %>% 
+    tidyr::pivot_longer(
+        cols = -c(id, intervention_time, treatment, time),
+        names_to = "variable",
+        values_to = "change"
+    ) %>% 
+    dplyr::mutate(
+        target = case_when(
+            stringr::str_detect(variable, "^p70s6k") ~ "P70S6K",
+            stringr::str_detect(variable, "^4ebp1") ~ "4EBP1",
+            stringr::str_detect(variable, "^erk") ~ "ERK",
+            stringr::str_detect(variable, "^pka") ~ "PKA")
+        ) %>% 
+    dplyr::mutate(target = factor(target,
+                                     levels = c("PKA",
+                                                "ERK",
+                                                "P70S6K",
+                                                "4EBP1")))  
+    #dplyr::mutate(change = log2(change))
+
+#Plot
+wb %>%
+    ggplot2::ggplot(aes(x = target, y = change, fill = time))+
+    geom_bar(
+        stat = "summary",
+        fun = "mean",
+        color = NA,
+        width = 0.6,
+        position = position_dodge(width = 0.6))+
+    geom_point(size = 1.5,
+               shape = 16,
+               position = position_jitterdodge(jitter.width = 0.05,
+                                               dodge.width = 0.6),
+               color = "black",
+               alpha = 0.25)+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_text(color = "black",
+                                 size = 10),
+        text = element_text(size = 10, family="Source Sans Pro", color = "black"),
+        axis.title = element_text(size = 10, family="Source Sans Pro"),
+        axis.text.x = element_text(size = 10,
+                                   angle = 90,
+                                   vjust = 0.5,
+                                   hjust = 1),
+        #legend.position = c(0.9, 0.85),
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = (unit(5, "mm")),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        legend.text = element_text(size = 8),
+        title = element_text(size = 10),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 10,
+                                  face = "bold")
+    )+
+    scale_fill_manual(
+        values = c("pre" = "#003f5c",
+                   "post" = "#ff6361"),
+        labels = c("pre" = "Pre biopsy",
+                   "post" = "Post biopsy")
+    )+
+    labs(x = NULL,
+         y = "Phosphorylation ratio (phosphorylated / total)",
+         title = "")+
+    facet_grid(~treatment+intervention_time,
+               labeller = labeller(time = c("pre" = "Pre biopsy",
+                                            "post" = "Post biopsy")))
+
+ggsave(here::here('data/figures/wb/all.svg'), width = 150, height = 75, units = "mm")
+```
+
+Kun PKA, alle værdier
+```{r}
+#Prepare data
+wb <- df %>% 
+    #dplyr::filter(time == "pre") %>% 
+    dplyr::select(c(
+        "id",
+        "treatment",
+        "time",
+        "intervention_time",
+        "pka_p"))
+
+#Plot
+wb %>%
+    ggplot2::ggplot(aes(x = time, y = pka_p, fill = time))+
+    geom_bar(
+        stat = "summary",
+        fun = "mean",
+        color = NA,
+        width = 0.6,
+        position = position_dodge(width = 0.6))+
+    geom_point(size = 1.5,
+               shape = 16,
+               position = position_jitterdodge(jitter.width = 0.05,
+                                               dodge.width = 0.6),
+               color = "black",
+               alpha = 0.25)+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_text(color = "black",
+                                 size = 10),
+        text = element_text(size = 10, family="Source Sans Pro", color = "black"),
+        axis.title = element_text(size = 10, family="Source Sans Pro"),
+        axis.text.x = element_text(size = 10,
+                                   angle = 90,
+                                   vjust = 0.5,
+                                   hjust = 1),
+        #legend.position = c(0.9, 0.85),
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = (unit(5, "mm")),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        legend.text = element_text(size = 8),
+        title = element_text(size = 10),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 10,
+                                  face = "bold")
+    )+
+    scale_fill_manual(
+        values = c("pre" = "#003f5c",
+                   "post" = "#ff6361"),
+        labels = c("pre" = "Pre biopsy",
+                   "post" = "Post biopsy")
+    )+
+    labs(x = NULL,
+         y = "Phosphorylation ratio (phosphorylated / total)",
+         title = "")+
+    facet_grid(~treatment+intervention_time,
+               labeller = labeller(time = c("pre" = "Pre biopsy",
+                                            "post" = "Post biopsy")))
+```
+
+Kun PKA, alle værdier, men som delta
+```{r}
+#Prepare data
+wb <- df %>% 
+    #dplyr::filter(time == "pre") %>% 
+    dplyr::select(c(
+        "id",
+        "treatment",
+        "time",
+        "intervention_time",
+        "pka_p")) %>% 
+    dplyr::group_by(id, treatment, intervention_time) %>% 
+    dplyr::mutate(delta_pka_p = (pka_p - pka_p[time == "pre"]) / pka_p[time == "pre"] * 100)  %>% 
+    dplyr::filter(time == "post")
+
+#Plot
+wb %>%
+    ggplot2::ggplot(aes(x = intervention_time, y = delta_pka_p, fill = treatment))+
+    geom_bar(
+        stat = "summary",
+        fun = "mean",
+        color = NA,
+        width = 0.6,
+        position = position_dodge(width = 0.6))+
+    geom_point(size = 1.5,
+               shape = 16,
+               position = position_jitterdodge(jitter.width = 0.05,
+                                               dodge.width = 0.6),
+               color = "black",
+               alpha = 0.25)+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_text(color = "black",
+                                 size = 10),
+        text = element_text(size = 10, family="Source Sans Pro", color = "black"),
+        axis.title = element_text(size = 10, family="Source Sans Pro"),
+        axis.text.x = element_text(size = 10),
+        #legend.position = c(0.9, 0.85),
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = (unit(5, "mm")),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        legend.text = element_text(size = 8),
+        title = element_text(size = 10),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 10,
+                                  face = "bold")
+    )+
+    scale_fill_manual(
+        values = c("PLA" = pla_color, "CLEN" = clen_color)
+    )+
+    scale_x_discrete(labels = c(pre = "Pre intervention",
+                                post = "Post intervention"))+
+    labs(x = NULL,
+         y = "Difference in PKA substrate phosphorylation\n (post biopsy - pre biopsy: a.u.)",
+         title = "")
 ```

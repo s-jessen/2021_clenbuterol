@@ -67,7 +67,6 @@ df <- readxl::read_excel(here::here('data-raw/clen_data.xlsx')) %>%
     
 ```
 
-# Carry over
 Lean vs. fat
 ```{r}
 df %>% 

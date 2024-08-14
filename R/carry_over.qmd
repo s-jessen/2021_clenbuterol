@@ -1,0 +1,359 @@
+---
+title: "for"
+format: html
+editor: source
+self-contained: true
+---
+
+Load libraries
+```{r, include = FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, error=FALSE)
+source(here::here("R/libraries.R"))
+source(here::here("R/colors.R"))
+source(here::here("R/functions.R"))
+```
+
+Load data
+```{r}
+df <- readxl::read_excel(here::here('data-raw/clen_data.xlsx')) %>% 
+    dplyr::mutate(id = as.factor(id)) %>% 
+    dplyr::mutate(trial = as.numeric(trial)) %>%
+    dplyr::mutate(time = factor(time, levels = c("pre", "post"))) %>%
+    dplyr::mutate(treatment = factor(treatment, levels = c("PLA", "CLEN"))) %>%
+    dplyr::group_by(id) %>% 
+    #Delta compared to first trial
+    dplyr::mutate(delta_lean_carry_over = lean - lean[trial == "1"]) %>%
+    dplyr::mutate(delta_fat_carry_over = fat - fat[trial == "1"]) %>%
+    dplyr::mutate(delta_vo2max_carry_over = vo2max - vo2max[trial == "1"]) %>%
+    dplyr::ungroup() %>% 
+    dplyr::group_by(id, treatment) %>% 
+    #Whole body
+    dplyr::mutate(delta_lean = lean - lean[time == "pre"]) %>%
+    dplyr::mutate(delta_fat = fat - fat[time == "pre"]) %>% 
+    dplyr::mutate(delta_fat_p = fat_p - fat_p[time == "pre"]) %>% 
+    #Leg
+    dplyr::mutate(delta_leg_lean = leg_lean - leg_lean[time == "pre"]) %>%
+    dplyr::mutate(delta_leg_fat = leg_fat - leg_fat[time == "pre"]) %>% 
+    dplyr::mutate(delta_leg_fat_p = leg_fat_p - leg_fat_p[time == "pre"]) %>% 
+    #Arm
+    dplyr::mutate(delta_arm_lean = arm_lean - arm_lean[time == "pre"]) %>%
+    dplyr::mutate(delta_arm_fat = arm_fat - arm_fat[time == "pre"]) %>% 
+    dplyr::mutate(delta_arm_fat_p = arm_fat_p - arm_fat_p[time == "pre"]) %>% 
+    #Torso
+    dplyr::mutate(delta_torso_lean = torso_lean - torso_lean[time == "pre"]) %>%
+    dplyr::mutate(delta_torso_fat = torso_fat - torso_fat[time == "pre"]) %>% 
+    dplyr::mutate(delta_torso_fat_p = torso_fat_p - torso_fat_p[time == "pre"]) %>%
+    #Aerobic
+    dplyr::mutate(delta_vo2max = vo2max - vo2max[time == "pre"]) %>% 
+    dplyr::mutate(delta_kondital = kondital - kondital[time == "pre"]) %>% 
+    dplyr::mutate(delta_ippo = ippo - ippo[time == "pre"]) %>% 
+    dplyr::mutate(delta_appo = appo - appo[time == "pre"]) %>%
+    #Anaerobic
+    dplyr::mutate(delta_ppo = ppo - ppo[time == "pre"]) %>%
+    dplyr::mutate(delta_mpo = mpo - mpo[time == "pre"]) %>%
+    #Cardiac
+    dplyr::mutate(delta_lv_mass = lv_mass - lv_mass[time == "pre"]) %>% 
+    dplyr::mutate(delta_lv_sv = lv_sv - lv_sv[time == "pre"]) %>% 
+    dplyr::mutate(delta_hr = hr - hr[time == "pre"]) %>% 
+    dplyr::mutate(delta_co = co - co[time == "pre"]) %>% 
+    dplyr::mutate(delta_ef = ef - ef[time == "pre"]) %>% 
+    #MVC
+    dplyr::mutate(delta_mvc = mvc - mvc[time == "pre"]) %>% 
+    dplyr::mutate(delta_tpot = tpot - tpot[time == "pre"]) %>% 
+    dplyr::mutate(delta_tpt = tpt - tpt[time == "pre"]) %>% 
+    dplyr::mutate(delta_hrt = hrt - hrt[time == "pre"]) %>% 
+    dplyr::mutate(delta_va = va - va[time == "pre"]) %>%
+    #Ungroup
+    dplyr::ungroup()
+    
+```
+
+# Carry over
+Lean
+```{r}
+df %>% 
+    dplyr::filter(!is.na(start_treatment)) %>% 
+    ggplot(aes(x = trial, y = delta_lean_carry_over))+
+    stat_summary(aes(group = id), fun = "mean", geom = "line", size = 0.5, na.rm = TRUE, show.legend = FALSE, alpha = 0.8, color = "gray")+
+    stat_summary(aes(group = start_treatment), fun = "mean", geom = "line", size = 0.5, na.rm = TRUE, show.legend = FALSE, color = "red")+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.1),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_rect(fill = "white"),
+        axis.line = element_blank(),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+        axis.ticks = element_line(linewidth = 0.1),
+        axis.title = element_text(size = 8, family="Source Sans Pro"),
+        axis.title.x = element_text(size = 8, family="Source Sans Pro"),
+        axis.title.y = element_text(size = 8, family="Source Sans Pro"),
+        text = element_text(size = 10, family="Source Sans Pro"),
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        strip.background = element_blank()
+    )+
+    labs(y = "Lean (difference to exp. trial 1)",
+         x = "Experiment trial")+
+    facet_grid(~start_treatment,
+               labeller = as_labeller(c(CLEN = "Started w. CLEN",
+                                      PLA = "Started w. PLA")))
+
+ggsave(here::here('data/figures/carry_over_lean.svg'), height = 100, width = 200, units = "mm")
+```
+
+Fat
+```{r}
+df %>% 
+    dplyr::filter(!is.na(start_treatment)) %>% 
+    ggplot(aes(x = trial, y = delta_fat_carry_over))+
+    stat_summary(aes(group = id), fun = "mean", geom = "line", size = 0.5, na.rm = TRUE, show.legend = FALSE, alpha = 0.8, color = "gray")+
+    stat_summary(aes(group = start_treatment), fun = "mean", geom = "line", size = 0.5, na.rm = TRUE, show.legend = FALSE, color = "red")+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.1),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_rect(fill = "white"),
+        axis.line = element_blank(),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+        axis.ticks = element_line(linewidth = 0.1),
+        axis.title = element_text(size = 8, family="Source Sans Pro"),
+        axis.title.x = element_text(size = 8, family="Source Sans Pro"),
+        axis.title.y = element_text(size = 8, family="Source Sans Pro"),
+        text = element_text(size = 10, family="Source Sans Pro"),
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        strip.background = element_blank()
+    )+
+    labs(y = "Fat (difference to exp. trial 1)",
+         x = "Experiment trial")+
+    facet_grid(~start_treatment,
+               labeller = as_labeller(c(CLEN = "Started w. CLEN",
+                                      PLA = "Started w. PLA")))
+
+ggsave(here::here('data/figures/carry_over_fat.svg'), height = 100, width = 200, units = "mm")
+```
+
+VO2max (lineplot)
+```{r}
+df %>% 
+    dplyr::filter(!is.na(start_treatment)) %>% 
+    ggplot(aes(x = trial, y = delta_vo2max_carry_over))+
+    stat_summary(aes(group = id), fun = "mean", geom = "line", size = 0.5, na.rm = TRUE, show.legend = FALSE, alpha = 0.8, color = "gray")+
+    stat_summary(aes(group = start_treatment), fun = "mean", geom = "line", size = 0.5, na.rm = TRUE, show.legend = FALSE, color = "red")+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.1),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_rect(fill = "white"),
+        axis.line = element_blank(),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+        axis.ticks = element_line(linewidth = 0.1),
+        axis.title = element_text(size = 8, family="Source Sans Pro"),
+        axis.title.x = element_text(size = 8, family="Source Sans Pro"),
+        axis.title.y = element_text(size = 8, family="Source Sans Pro"),
+        text = element_text(size = 10, family="Source Sans Pro"),
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        strip.background = element_blank()
+    )+
+    labs(y = "VO2max (difference to exp. trial 1)",
+         x = "Experiment trial")+
+    facet_grid(~start_treatment,
+               labeller = as_labeller(c(CLEN = "Started w. CLEN",
+                                      PLA = "Started w. PLA")))
+
+ggsave(here::here('data/figures/carry_over_vo2max.svg'), height = 60, width = 200, units = "mm")
+```
+
+VO2max (barplot)
+```{r}
+df %>%
+    dplyr::filter(time == "post") %>% 
+    dplyr::filter(!is.na(start_treatment)) %>% 
+    ggplot2::ggplot(aes(x = treatment, y = delta_vo2max, fill = treatment))+
+    geom_bar(
+        stat = "summary",
+        fun = "mean",
+        color = NA,
+        width = 0.6)+
+    geom_point(size = 1.5,
+               shape = 16,
+               position = position_jitter(width = 0.05),
+               color = "black",
+               alpha = 0.25)+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_text(color = "black", size = 10),
+        text = element_text(size = 10, family="Source Sans Pro", color = "black"),
+        axis.title = element_text(size = 10, family="Source Sans Pro"),
+        axis.text.x = element_text(size = 10),
+        legend.position = "none",
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = (unit(3, "mm")),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        title = element_text(size = 6),
+        strip.background = element_blank(),
+        strip.placement = "outside",  # Move strip labels outside plotting area
+        strip.text = element_text(size = 10)
+    )+
+    scale_fill_manual(
+        values = c("PLA" = pla_color, "CLEN" = clen_color)
+    )+
+    labs(x = NULL,
+         y = "Change (post - pre)")+
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.25))) +
+    facet_wrap(~ start_treatment,
+               labeller = as_labeller(c(
+                   PLA = "Started w. PLA",
+                   CLEN = "Started w. CLEN")))
+
+ggsave(here::here('data/figures/carry_over_vo2max.svg'), height = 50, width = 125, units = "mm")
+```
+
+Oxygraph data load
+```{r}
+#Load data
+df_oxy <- readxl::read_excel(here::here('data-raw/oxy_data.xlsx')) %>% 
+    dplyr::mutate(id = as.factor(id)) %>% 
+    dplyr::mutate(trial = as.numeric(trial)) %>%
+    dplyr::mutate(time = factor(time, levels = c("pre", "post"))) %>%
+    dplyr::mutate(treatment = factor(treatment, levels = c("PLA", "CLEN"))) %>%
+    #Delta compared to first trial
+    dplyr::group_by(id) %>% 
+    dplyr::mutate(delta_leak_carry_over = leak - leak[trial == "1"]) %>%
+    dplyr::mutate(delta_cip_0_4_carry_over = cip_0_4 - cip_0_4[trial == "1"]) %>% 
+    dplyr::mutate(delta_cip_0_6_carry_over = cip_0_6 - cip_0_6[trial == "1"]) %>% 
+    dplyr::mutate(delta_cip_max_carry_over = cip_max - cip_max[trial == "1"]) %>% 
+    dplyr::mutate(delta_ci_cii_max_carry_over = ci_cii_max - ci_cii_max[trial == "1"]) %>% 
+    dplyr::mutate(delta_ets_carry_over = ets - ets[trial == "1"]) %>%
+    dplyr::mutate(delta_ciip_carry_over = ciip - ciip[trial == "1"]) %>%
+    dplyr::ungroup() %>% 
+    #Delta within trial
+    dplyr::group_by(id, treatment) %>% 
+    dplyr::mutate(delta_leak = leak - leak[time == "pre"]) %>% 
+    dplyr::mutate(delta_cip_0_4 = cip_0_4 - cip_0_4[time == "pre"]) %>% 
+    dplyr::mutate(delta_cip_0_6 = cip_0_6 - cip_0_6[time == "pre"]) %>% 
+    dplyr::mutate(delta_cip_max = cip_max - cip_max[time == "pre"]) %>% 
+    dplyr::mutate(delta_ci_cii_max = ci_cii_max - ci_cii_max[time == "pre"]) %>% 
+    dplyr::mutate(delta_ets = ets - ets[time == "pre"]) %>%
+    dplyr::mutate(delta_ciip = ciip - ciip[time == "pre"]) %>%
+    #Ungroup
+    dplyr::ungroup()
+```
+
+
+Oxygraph carry over
+```{r}
+oxy_carry_over <- df_oxy %>% 
+    dplyr::filter(time == "post") %>% 
+    dplyr::select(c(
+        "id",
+        "treatment",
+        "start_treatment",
+        "delta_leak_carry_over",
+        "delta_cip_0_4_carry_over",
+        "delta_cip_0_6_carry_over",
+        "delta_cip_max_carry_over",
+        "delta_ci_cii_max_carry_over",
+        "delta_ets_carry_over",
+        "delta_ciip_carry_over")) %>% 
+    tidyr::pivot_longer(
+        cols = -c(id, treatment, start_treatment),
+        names_to = "variable",
+        values_to = "change"
+    ) %>% 
+    dplyr::mutate(variable = factor(variable, 
+                                    levels = c(
+                                        "delta_leak_carry_over",
+                                        "delta_cip_0_4_carry_over",
+                                        "delta_cip_0_6_carry_over",
+                                        "delta_cip_max_carry_over",
+                                        "delta_ci_cii_max_carry_over",
+                                        "delta_ets_carry_over",
+                                        "delta_ciip_carry_over"))) %>% 
+    dplyr::group_by(treatment, variable, start_treatment) %>% 
+    dplyr::summarize(
+        mean = mean(change),
+        sd = sd(change),
+        n = n(),
+        se = sd / sqrt(n),
+        t_value = qt(0.975, df = n - 1),
+        lower_ci = mean - t_value * se,
+        upper_ci = mean + t_value * se
+    )
+
+oxy_carry_over %>%
+    ggplot2::ggplot(aes(x = variable, y = mean, fill = treatment))+
+    geom_bar(
+        stat = "summary",
+        fun = "mean",
+        color = NA,
+        width = 0.6,
+        position = position_dodge(width = 0.6))+
+    geom_errorbar(aes(ymin = lower_ci,
+                      ymax = upper_ci,
+                      width = 0.1),
+                  linewidth = 0.1,
+                  position = position_dodge(width = 0.6))+
+    #geom_point(size = 1.5,
+    #           shape = 16,
+    #           position = position_jitterdodge(jitter.width = 0.05,
+    #                                           dodge.width = 0.5),
+    #           color = "black",
+    #           alpha = 0.25)+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_text(color = "black", size = 10),
+        text = element_text(size = 10, family="Source Sans Pro", color = "black"),
+        axis.title = element_text(size = 10, family="Source Sans Pro"),
+        axis.text.x = element_text(size = 10),
+        legend.position = "none",
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = (unit(3, "mm")),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        title = element_text(size = 6),
+        strip.background = element_blank(),
+        strip.placement = "outside",  # Move strip labels outside plotting area
+        strip.text = element_text(size = 10)
+    )+
+    scale_fill_manual(
+        values = c("PLA" = pla_color, "CLEN" = clen_color)
+    )+
+    scale_x_discrete(labels = c(
+        "delta_leak_carry_over" = "Leak",
+        "delta_cip_0_4_carry_over" = "CIP\n(0.4 M)",
+        "delta_cip_0_6_carry_over" = "CIP\n(0.6 M)",
+        "delta_cip_max_carry_over" = "CIP\n(Max)",
+        "delta_ci_cii_max_carry_over" = "CI+CIIP\n(Max)",
+        "delta_ets_carry_over" = "ETS",
+        "delta_ciip_carry_over" = "CIIP")
+        )+
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.1)))+
+    labs(x = NULL,
+         y = expression(atop("Respiration", paste("(pmol ", O[2], " × ", s^-1, " × mg ", w.w.^-1, ")"))))+
+    facet_grid(~start_treatment)
+```
+
+
