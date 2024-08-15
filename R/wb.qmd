@@ -136,7 +136,8 @@ wb <- df %>%
                                                 "4EBP1"))) %>% 
     dplyr::mutate(intervention_time = factor(intervention_time,
                                      levels = c("pre", "post"))) %>% 
-    dplyr::mutate(change = log10(change * 100))
+    dplyr::mutate(change = log10(change * 100)) %>% 
+    dplyr::filter(change != -Inf)
 
 #Plot
 wb %>%
