@@ -1,0 +1,178 @@
+---
+title: "for"
+format: html
+editor: source
+self-contained: true
+---
+
+Load libraries
+```{r, include = FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, error=FALSE)
+source(here::here("R/libraries.R"))
+source(here::here("R/colors.R"))
+source(here::here("R/functions.R"))
+```
+
+Load data
+```{r}
+df1 <- readxl::read_excel(here::here('data-raw/blood.xlsx')) %>% 
+    dplyr::mutate(id = as.factor(id)) %>% 
+    dplyr::mutate(trial = as.numeric(trial)) %>%
+    dplyr::mutate(time = factor(time, levels = c("pre", "post"))) %>% 
+    dplyr::mutate(
+        hct_perc = as.numeric(hct_perc),
+        hct_g_dl = as.numeric(hct_g_dl),
+        hb_mass = as.numeric(hb_mass),
+        rbc_volume = as.numeric(rbc_volume),
+        plasma_volume = as.numeric(plasma_volume),
+        blood_volume = as.numeric(blood_volume)
+    )
+
+#Summarize doublets
+df <- df1 %>% 
+    dplyr::group_by(id, trial, time) %>% 
+    dplyr::summarize(
+        hct_perc = mean(hct_perc, na.rm = T),
+        hct_g_dl = mean(hct_g_dl, na.rm = T),
+        hb_mass = mean(hb_mass, na.rm = T),
+        rbc_volume = mean(rbc_volume, na.rm = T),
+        plasma_volume = mean(plasma_volume, na.rm = T),
+        blood_volume = mean(blood_volume, na.rm = T)
+    )
+
+#Retrieve treatments
+treatments <- readxl::read_excel(here::here('data-raw/clen_data.xlsx'))
+
+#Merge
+df <- df %>% 
+    merge(treatments[,c("id", "trial", "treatment")], by = c("id", "trial"))
+
+#Calc delta's
+df_delta <- df %>% 
+    dplyr::group_by(id, treatment) %>% 
+    dplyr::mutate(delta_hct_perc = hct_perc - hct_perc[time == "pre"]) %>%
+    dplyr::mutate(delta_hct_g_dl = hct_g_dl - hct_g_dl[time == "pre"]) %>% 
+    dplyr::mutate(delta_hb_mass = hb_mass - hb_mass[time == "pre"]) %>% 
+    dplyr::mutate(delta_rbc_volume = rbc_volume - rbc_volume[time == "pre"]) %>% 
+    dplyr::mutate(delta_plasma_volume = plasma_volume - plasma_volume[time == "pre"]) %>% 
+    dplyr::mutate(delta_blood_volume = blood_volume - blood_volume[time == "pre"]) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::filter(time == "post")
+    
+```
+
+Plasma data
+```{r}
+#Prepare data
+plasma <- df_delta %>% 
+    dplyr::select(c(
+        "id",
+        "treatment",
+        "delta_hct_perc",
+        "delta_hb_mass",
+        "delta_rbc_volume",
+        "delta_plasma_volume",
+        "delta_blood_volume")) %>% 
+    tidyr::pivot_longer(
+        cols = -c(id, treatment),
+        names_to = "variable",
+        values_to = "change"
+    ) %>% 
+    dplyr::mutate(
+        tissue = case_when(
+            stringr::str_detect(variable, "hct_perc$") ~ "hematocrit",
+            stringr::str_detect(variable, "hb_mass$") ~ "hemoglobin_mass",
+            stringr::str_detect(variable, "rbc_volume$") ~ "rbc_volume",
+            stringr::str_detect(variable, "plasma_volume$") ~ "plasma_volume",
+            stringr::str_detect(variable, "blood_volume$") ~ "blood_volume"
+        )) %>% 
+    dplyr::mutate(tissue = factor(tissue,
+                                     levels = c("hematocrit",
+                                                "hemoglobin_mass",
+                                                "rbc_volume",
+                                                "plasma_volume",
+                                                "blood_volume")))
+
+#Plot
+plasma %>%
+    ggplot2::ggplot(aes(x = treatment, y = change, fill = treatment))+
+    geom_bar(
+        stat = "summary",
+        fun = "mean",
+        color = NA,
+        width = 0.6)+
+    geom_point(size = 1.5,
+               shape = 16,
+               #position = position_jitter(width = 0.05),
+               color = "black",
+               alpha = 0.25)+
+    geom_line(aes(group = id),
+              alpha = 0.1,
+              linewidth = 0.2)+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_text(color = "black", size = 10),
+        text = element_text(size = 10, family="Source Sans Pro", color = "black"),
+        axis.title = element_text(size = 10, family="Source Sans Pro"),
+        axis.text.x = element_text(size = 10),
+        legend.position = "none",
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = (unit(3, "mm")),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        title = element_text(size = 6),
+        strip.background = element_blank(),
+        strip.placement = "outside",  # Move strip labels outside plotting area
+        strip.text = element_text(size = 10,
+                                  face = "bold")
+    )+
+    scale_fill_manual(
+        values = c("PLA" = pla_color, "CLEN" = clen_color)
+    )+
+    labs(x = NULL,
+         y = "Change (post - pre)")+
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.25))) +
+        facet_wrap(~tissue,
+               scales = "free_y",
+               labeller = as_labeller(c(
+                   hematocrit = "Hematocrit (%.)",
+                   hemoglobin_mass = "Hemoglobin mass (g)",
+                   rbc_volume = "RBC volume (mL)",
+                   plasma_volume = "Plasma volume (mL)",
+                   blood_volume = "Blood volume (mL)")))
+
+ggsave(here::here('data/figures/layouts/plasma_layout.svg'), width = 150, height = 100, units = "mm")
+
+```
+
+Table
+```{r}
+summary <- df %>% 
+    dplyr::group_by(time, treatment) %>% 
+    dplyr::summarize(
+        mean_hct_perc = round(mean(hct_perc), 1),
+        sd_hct_perc = round(sd(hct_perc), 1),
+        mean_hb_mass = round(mean(hb_mass), 0),
+        sd_hb_mass = round(sd(hb_mass), 0),
+        mean_rbc_volume = round(mean(rbc_volume), 0),
+        sd_rbc_volume = round(sd(rbc_volume), 0),
+        mean_plasma_volume = round(mean(plasma_volume), 0),
+        sd_plasma_volume = round(sd(plasma_volume), 0),
+        mean_blood_volume = round(mean(blood_volume), 0),
+        sd_blood_volume = round(sd(blood_volume), 0)
+        ) %>% 
+    tidyr::pivot_longer(
+        cols = -c("time", "treatment"),
+        names_to = "variable",
+        values_to = "value"
+    )
+```
+
+
