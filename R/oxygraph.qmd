@@ -164,7 +164,7 @@ oxy %>%
         legend.box.background = element_blank(),
         title = element_text(size = 6),
         strip.background = element_blank(),
-        strip.placement = "outside",  # Move strip labels outside plotting area
+        strip.placement = "outside", 
         strip.text = element_text(size = 10)
     )+
     scale_fill_manual(
@@ -267,7 +267,7 @@ oxy_carry_over %>%
         legend.box.background = element_blank(),
         title = element_text(size = 6),
         strip.background = element_blank(),
-        strip.placement = "outside",  # Move strip labels outside plotting area
+        strip.placement = "outside", 
         strip.text = element_text(size = 10)
     )+
     scale_fill_manual(
@@ -324,7 +324,7 @@ df %>%
         legend.box.background = element_blank(),
         title = element_text(size = 6),
         strip.background = element_blank(),
-        strip.placement = "outside",  # Move strip labels outside plotting area
+        strip.placement = "outside", 
         strip.text = element_text(size = 10)
     )+
     scale_fill_manual(
