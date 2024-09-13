@@ -357,3 +357,11 @@ oxy_carry_over %>%
 ```
 
 
+```{r}
+df %>% 
+    ggplot(aes(x = trial, y = delta_vo2max_carry_over))+
+    geom_bar(stat = "summary", fun = "mean")+
+    geom_point()+
+    ylab("change vs. first trial")
+```
+
