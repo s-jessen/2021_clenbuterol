@@ -1,0 +1,245 @@
+---
+title: "for"
+format: html
+editor: source
+self-contained: true
+---
+
+Load libraries
+```{r, include = FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, error=FALSE)
+source(here::here("R/libraries.R"))
+source(here::here("R/colors.R"))
+source(here::here("R/functions.R"))
+```
+
+Load data
+```{r}
+df <- readxl::read_excel(here::here('data-raw/wb_pecam_oxphos.xlsx')) %>% 
+    dplyr::mutate(id = as.factor(id)) %>% 
+    dplyr::mutate(time = factor(time, levels = c("pre", "post"))) %>%
+    dplyr::mutate(treatment = factor(treatment, levels = c("PLA", "CLEN"))) %>% 
+    dplyr::group_by(id, treatment) %>% 
+    #Delta
+    dplyr::mutate(delta_pecam = pecam - pecam[time == "pre"]) %>%
+    dplyr::mutate(delta_ci = ci - ci[time == "pre"]) %>% 
+    dplyr::mutate(delta_cii = cii - cii[time == "pre"]) %>% 
+    dplyr::mutate(delta_ciii = ciii - ciii[time == "pre"]) %>% 
+    dplyr::mutate(delta_cv = cv - cv[time == "pre"]) %>% 
+    dplyr::mutate(delta_c_all = c_all - c_all[time == "pre"]) %>%
+    dplyr::ungroup() 
+    
+     
+```
+
+PECAM
+```{r}
+#Plot
+df %>%
+    dplyr::filter(time == "post") %>% 
+    ggplot2::ggplot(aes(x = treatment, y = delta_pecam, fill = treatment))+
+    geom_bar(
+        stat = "summary",
+        fun = "mean",
+        color = NA,
+        width = 0.6,
+        position = position_dodge(width = 0.6))+
+    geom_point(size = 1.5,
+               shape = 16,
+               position = position_dodge(width = 0.6),
+               color = "black",
+               alpha = 0.25)+
+     geom_line(aes(group = id),
+              alpha = 0.1,
+              linewidth = 0.2)+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_text(color = "black", size = 10),
+        text = element_text(size = 10, family="Source Sans Pro", color = "black"),
+        axis.title = element_text(size = 10, family="Source Sans Pro"),
+        axis.text.x = element_text(size = 10),
+        #legend.position = c(0.9, 0.85),
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = (unit(5, "mm")),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        legend.text = element_text(size = 8),
+        title = element_text(size = 10),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 10,
+                                  face = "bold")
+    )+
+    scale_fill_manual(
+        values = c("PLA" = pla_color, "CLEN" = clen_color)
+    )+
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.25)))+
+    labs(x = NULL,
+         y = "Change (post - pre)")
+
+
+ggsave(here::here('data/figures/wb/pecam.svg'), width = 60, height = 50, units = "mm")
+```
+
+oxphos
+```{r}
+df %>% 
+    dplyr::filter(time == "post") %>%
+    tidyr::pivot_longer(
+        cols = c(delta_ci, delta_cii, delta_ciii, delta_cv, delta_c_all),
+        names_to = "subunit",
+        values_to = "abundance"
+    ) %>% 
+    dplyr::mutate(subunit = factor(subunit, levels = c("delta_ci",
+                                                       "delta_cii",
+                                                       "delta_ciii",
+                                                       "delta_cv",
+                                                       "delta_c_all"))) %>% 
+    ggplot2::ggplot(aes(x = subunit, y = abundance, fill = treatment))+
+    geom_bar(
+        stat = "summary",
+        fun = "mean",
+        color = NA,
+        width = 0.6,
+        position = position_dodge(width = 0.6))+
+    geom_point(size = 1.5,
+               shape = 16,
+               position = position_dodge(width = 0.6),
+               color = "black",
+               alpha = 0.25)+
+    #geom_line(aes(group = id),
+    #          alpha = 0.1,
+    #          linewidth = 0.2)+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_text(color = "black", size = 10),
+        text = element_text(size = 10, family="Source Sans Pro", color = "black"),
+        axis.title = element_text(size = 10, family="Source Sans Pro"),
+        axis.text.x = element_text(size = 10),
+        #legend.position = c(0.9, 0.85),
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = (unit(5, "mm")),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        legend.text = element_text(size = 8),
+        title = element_text(size = 10),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 10,
+                                  face = "bold")
+    )+
+    scale_fill_manual(
+        values = c("PLA" = pla_color, "CLEN" = clen_color)
+    )+
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.25)))+
+    scale_x_discrete(labels = c(delta_ci = "CI",
+                                delta_cii = "CII",
+                                delta_ciii = "CIII",
+                                delta_cv = "CV",
+                                delta_c_all = "Mean"))+
+    labs(x = NULL,
+         y = "Change (post - pre)")
+
+ggsave(here::here('data/figures/wb/oxphos.svg'), width = 100, height = 50, units = "mm")
+```
+
+
+HAD
+```{r}
+
+df_enz <- readxl::read_excel(here::here('data-raw/clen_enzymes.xlsx')) %>% 
+    dplyr::mutate(id = as.factor(id)) %>% 
+    dplyr::mutate(trial = as.numeric(trial)) %>%
+    dplyr::mutate(time = factor(time, levels = c("pre", "post")))
+
+#Retrieve treatments
+treatments <- readxl::read_excel(here::here('data-raw/clen_data.xlsx'))
+
+#Merge
+df_enz <- df_enz %>% 
+    merge(treatments[,c("id", "trial", "treatment")], by = c("id", "trial"))
+
+#Calc delta's
+df_delta <- df_enz %>% 
+    dplyr::group_by(id, treatment) %>% 
+    dplyr::mutate(delta_had_protein = had_protein - had_protein[time == "pre"]) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::filter(time == "post") %>% 
+    dplyr::filter(id != "11")
+
+#Plot
+df_delta %>%
+    ggplot2::ggplot(aes(x = treatment, y = delta_had_protein, fill = treatment))+
+    geom_bar(
+        stat = "summary",
+        fun = "mean",
+        color = NA,
+        width = 0.6,
+        position = position_dodge(width = 0.6))+
+    geom_point(size = 1.5,
+               shape = 16,
+               position = position_dodge(width = 0.6),
+               color = "black",
+               alpha = 0.25)+
+     geom_line(aes(group = id),
+              alpha = 0.1,
+              linewidth = 0.2)+
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.25)+
+    theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill=NA, linewidth = 0.25),
+        panel.grid.minor=element_blank(),
+        panel.grid.major = element_blank(),
+        plot.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_text(color = "black", size = 10),
+        text = element_text(size = 10, family="Source Sans Pro", color = "black"),
+        axis.title = element_text(size = 10, family="Source Sans Pro"),
+        axis.text.x = element_text(size = 10),
+        #legend.position = c(0.9, 0.85),
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = (unit(5, "mm")),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        legend.text = element_text(size = 8),
+        title = element_text(size = 10),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 10,
+                                  face = "bold")
+    )+
+    scale_fill_manual(
+        values = c("PLA" = pla_color, "CLEN" = clen_color)
+    )+
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.25)))+
+    labs(x = NULL,
+         y = "Change (post - pre)")
+
+
+ggsave(here::here('data/figures/wb/had.svg'), width = 60, height = 50, units = "mm")
+
+```
+
+Mean for HAD
+```{r}
+df_enz %>% 
+    dplyr::filter(id != "11") %>% 
+    dplyr::group_by(treatment, time) %>% 
+    dplyr::summarize(
+        mean = mean(had_protein),
+        sd = sd(had_protein)
+    )
+```
+
