@@ -588,5 +588,18 @@ anaerobic %>%
 ggsave(here::here('data/figures/layouts/sprint_layout.svg'), width = 100, height = 50, units = "mm")
 ```
 
+Sprint table
+```{r}
+df %>% 
+    dplyr::filter(!(id == "10" & treatment == "CLEN")) %>%  
+    dplyr::group_by(treatment, time) %>% 
+    dplyr::summarize(
+        mean_ppo = mean(ppo, na.rm = T),
+        sd_ppo = sd(ppo, na.rm = T),
+        mean_mpo = mean(mpo, na.rm = T),
+        sd_mpo = sd(mpo, na.rm = T)
+    ) %>% 
+    dplyr::ungroup()
+```
 
 
